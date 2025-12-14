@@ -24,6 +24,7 @@ services:
         - vite.config.ts
         - tsconfig.json
         - Dockerfile
+        - nginx.conf
         - scripts/**
       ignoredPaths:
         - README.md

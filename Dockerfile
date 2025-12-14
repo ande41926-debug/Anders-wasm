@@ -74,8 +74,8 @@ RUN apk add --no-cache wget
 # Copy built static files
 COPY --from=node-builder /app/dist /usr/share/nginx/html
 
-# Copy nginx configuration (optional, uses default if not provided)
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy nginx configuration (ensures WASM MIME type and proper serving)
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose port 80
 EXPOSE 80
