@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmolVLM Preprocessing - Sigma WASM</title>
+        <title>Image Captioning Demo - Sigma WASM</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="icon" type="image/webp" href="/rustacean.webp">
     <link rel="apple-touch-icon" href="/rustacean.webp">
@@ -12,7 +12,7 @@
 <body>
     <div id="fullscreen">
         <div class="preprocess-container">
-            <h1>SmolVLM Preprocessing Demo</h1>
+            <h1>SmolVLM-500M Demo</h1>
             <nav class="nav-container">
                 <a href="/astar" class="nav-link">A* Pathfinding</a>
                 <a href="/preprocess" class="nav-link">Preprocessing</a>
@@ -20,34 +20,51 @@
             <div id="error" class="error-message"></div>
             <div id="loadingIndicator" class="loading-indicator"></div>
             
-            <div class="preprocess-section">
-                <h2>About SmolVLM & WASM Preprocessing</h2>
-                <p>
-                    This demo showcases WebAssembly (WASM) preprocessing for <strong>SmolVLM-500M-Instruct</strong>, 
-                    a compact vision-language model from Hugging Face. SmolVLM processes both images and text 
-                    to generate multimodal outputs like image captioning and visual question answering.
-                </p>
-                <p>
-                    <strong>Architecture:</strong> This preprocessing step uses Rust-compiled WASM to efficiently 
-                    resize images and tokenize text before feeding them to SmolVLM. In a full implementation, 
-                    the preprocessed data would be passed to SmolVLM running via JavaScript frameworks (like 
-                    Transformers.js) on WebGPU for inference, enabling fully client-side, on-device AI without 
-                    server calls.
-                </p>
-                <p>
-                    <strong>Image Processing:</strong> SmolVLM uses 384×384 image patches encoded as 81 visual tokens. 
-                    Larger images are divided into patches, each processed separately. This demo resizes images 
-                    to 384×384 using high-quality Lanczos3 filtering in WASM for optimal preprocessing performance.
-                </p>
-            </div>
-            
-            <div class="preprocess-section">
-                <h2>Image Preprocessing</h2>
-                <p>Upload an image to resize it to 384×384 (SmolVLM patch size) using high-quality Lanczos3 resizing</p>
-                <input type="file" id="imageInput" accept="image/*">
-                <div id="imagePreviewContainer">
-                    <img id="imagePreview" alt="Image preview">
+                <div class="preprocess-section">
+                    <h2>About Image Captioning & WASM Preprocessing</h2>
+                    <p>
+                        This demo showcases <strong>image captioning</strong> using a vision-language model from Hugging Face, 
+                        integrated with <strong>WebAssembly (WASM) preprocessing</strong> for high-performance image preparation.
+                    </p>
+                    <p>
+                        <strong>Architecture:</strong> Images are preprocessed using Rust-compiled WASM (Lanczos3 resizing to 384×384), 
+                        then passed to an image captioning model running in the browser via Transformers.js. The model performs image captioning 
+                        entirely client-side using WebGPU acceleration.
+                    </p>
+                    <p>
+                        <strong>Image Processing:</strong> WASM preprocessing resizes images to 384×384 using high-quality Lanczos3 filtering. 
+                        The preprocessed image is then fed to the captioning model for inference, generating text descriptions.
+                    </p>
+                    <p>
+                        <strong>Model:</strong> BLIP image captioning model runs entirely in the browser using Transformers.js 
+                        with WebGPU support, enabling fully on-device AI without server calls.
+                        <strong>Note:</strong> SmolVLM-500M uses the idefics3 architecture which is not yet supported by Transformers.js, 
+                        so we use BLIP as a supported alternative for demonstration.
+                    </p>
                 </div>
+            
+                <div class="preprocess-section">
+                    <h2>Image Preprocessing & Captioning</h2>
+                    <p>Upload an image or use your webcam to capture a snapshot, then run image captioning inference</p>
+                
+                <div style="margin: 1rem 0;">
+                    <h3>Webcam Capture</h3>
+                    <video id="webcamVideo" autoplay playsinline style="max-width: 100%; border: 1px solid #333; border-radius: 4px; display: none;"></video>
+                    <div id="webcamControls" style="margin: 0.5rem 0;">
+                        <button id="startWebcamBtn">Start Webcam</button>
+                        <button id="stopWebcamBtn" style="display: none;">Stop Webcam</button>
+                        <button id="snapshotBtn" style="display: none;">Capture Snapshot</button>
+                    </div>
+                </div>
+                
+                <div style="margin: 1rem 0;">
+                    <h3>Or Upload Image</h3>
+                    <input type="file" id="imageInput" accept="image/*">
+                    <div id="imagePreviewContainer">
+                        <img id="imagePreview" alt="Image preview">
+                    </div>
+                </div>
+                
                 <button id="processImageBtn">Process Image</button>
                 <div>
                     <canvas id="imageOutput"></canvas>
@@ -57,7 +74,7 @@
             
             <div class="preprocess-section">
                 <h2>Text Preprocessing</h2>
-                <p>Enter text to normalize and tokenize for SmolVLM input</p>
+                <p>Enter text to normalize and tokenize</p>
                 <textarea id="textInput" rows="4" cols="50" placeholder="Enter text here..."></textarea>
                 <br>
                 <button id="processTextBtn">Process Text</button>

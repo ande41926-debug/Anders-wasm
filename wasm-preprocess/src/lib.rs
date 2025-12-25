@@ -8,8 +8,8 @@ pub fn init() {
 }
 
 /// Preprocess image data by resizing to target dimensions using high-quality Lanczos3 filtering
-/// Optimized for SmolVLM preprocessing (384×384 patch size)
 /// Returns preprocessed image data as RGBA bytes
+/// This is a building block for ML/AI preprocessing pipelines
 /// Note: source_width and source_height are kept for API compatibility but dimensions are determined from decoded image
 #[wasm_bindgen]
 pub fn preprocess_image(
@@ -30,7 +30,7 @@ pub fn preprocess_image(
         .map_err(|e| JsValue::from_str(&format!("Failed to decode image: {}", e)))?;
 
     // Resize using Lanczos3 filter for high-quality resizing
-    // This is optimal for SmolVLM preprocessing which requires 384×384 patches
+    // Lanczos3 provides excellent quality for ML model preprocessing
     let resized_img = img.resize_exact(target_width, target_height, image::imageops::FilterType::Lanczos3);
 
     // Convert to RGBA format

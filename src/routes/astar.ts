@@ -1,5 +1,16 @@
-import initWasm from '../../pkg/wasm_astar/wasm_astar.js';
 import type { Layer, WasmAstar, WasmModuleAstar } from '../types';
+
+// Lazy WASM import - only load when init() is called
+// Using a getter function to defer the import until actually needed
+let wasmInitFn: (() => Promise<unknown>) | null = null;
+const getInitWasm = async (): Promise<unknown> => {
+  if (!wasmInitFn) {
+    // Import only when first called
+    const wasmModule = await import('../../pkg/wasm_astar/wasm_astar.js');
+    wasmInitFn = wasmModule.default;
+  }
+  return wasmInitFn();
+};
 
 // Type for wasm-bindgen exports
 interface WasmBindgenExports {
@@ -54,8 +65,8 @@ export const init = async (): Promise<void> => {
   globalObj.js_draw_fps = (layerId: number, fps: number): void => wasmImports.js_draw_fps(layerId, fps);
   globalObj.js_path_count = (layerId: number, count: number): void => wasmImports.js_path_count(layerId, count);
   
-  // Initialize wasm-bindgen
-  const initResult = await initWasm();
+  // Initialize wasm-bindgen (lazy load)
+  const initResult = await getInitWasm();
   
   // Type guard to check if result has expected structure
   const wasmModuleExports: WasmBindgenExports = 

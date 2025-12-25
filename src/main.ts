@@ -31,6 +31,15 @@ async function route(): Promise<void> {
     }
   }
   
+  // Also check for /pages/*.html paths (for direct HTML file access in dev)
+  if (!handler) {
+    if (path.includes('preprocess')) {
+      handler = routes.get('/preprocess');
+    } else if (path.includes('astar')) {
+      handler = routes.get('/astar');
+    }
+  }
+  
   if (handler) {
     try {
       await handler();
