@@ -633,8 +633,10 @@ function copyWasmModules(): Plugin {
 }
 
 export default defineConfig({
+  publicDir: 'public', // Explicitly enable public directory copying
   plugins: [devServerRouting(), removeVitePreload(), rewriteWasmImports(), copyPublicAssets(), copyWasmModules()],
   build: {
+    copyPublicDir: true, // Explicitly enable copying public directory (may be disabled with rollupOptions.input)
     target: 'esnext',
     assetsInlineLimit: 0, // Prevent WASM from being inlined as data URIs
     rollupOptions: {
