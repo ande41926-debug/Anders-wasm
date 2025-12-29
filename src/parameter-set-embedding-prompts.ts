@@ -42,8 +42,8 @@ const BIOME_DESCRIPTIONS = {
  * Constraint value mappings
  */
 const MAP_SIZE_CONSTRAINTS = {
-  small: { maxLayer: 15 },
-  medium: { maxLayer: 25 },
+  small: { maxLayer: 10 },
+  medium: { maxLayer: 20 },
   large: { maxLayer: 35 },
 } as const;
 

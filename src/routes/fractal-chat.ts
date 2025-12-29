@@ -1,104 +1,5 @@
 import type { WasmModuleFractalChat } from '../types';
 import { loadWasmModule, validateWasmModule } from '../wasm/loader';
-import { pipeline, type TextGenerationPipeline, env } from '@xenova/transformers';
-
-// Model configuration
-// Using Qwen1.5-0.5B-Chat for better conversational quality
-const MODEL_ID = 'Xenova/qwen1.5-0.5b-chat';
-
-// CORS proxy services for Hugging Face model loading
-const CORS_PROXY_SERVICES = [
-  'https://api.allorigins.win/raw?url=',
-  'https://corsproxy.io/?',
-  'https://api.codetabs.com/v1/proxy?quest=',
-] as const;
-
-/**
- * Check if a URL needs CORS proxying
- */
-function needsProxy(url: string): boolean {
-  return (
-    url.includes('huggingface.co') &&
-    !url.includes('cdn.jsdelivr.net') &&
-    !url.includes('api.allorigins.win') &&
-    !url.includes('corsproxy.io') &&
-    !url.includes('api.codetabs.com')
-  );
-}
-
-/**
- * Custom fetch function with CORS proxy support
- */
-async function customFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-  
-  // If URL doesn't need proxying, use normal fetch
-  if (!needsProxy(url)) {
-    return fetch(input, init);
-  }
-  
-  if (addLogEntry) {
-    addLogEntry(`Custom fetch: Attempting to fetch via CORS proxy: ${url}`, 'info');
-  }
-  
-  // Try each CORS proxy in order
-  for (const proxyBase of CORS_PROXY_SERVICES) {
-    try {
-      const proxyUrl = proxyBase + encodeURIComponent(url);
-      if (addLogEntry) {
-        addLogEntry(`Trying proxy: ${proxyBase}`, 'info');
-      }
-      
-      const response = await fetch(proxyUrl, {
-        ...init,
-        redirect: 'follow',
-      });
-      
-      // Skip proxies that return error status codes
-      if (response.status >= 400 && response.status < 600) {
-        if (addLogEntry) {
-          addLogEntry(`Proxy ${proxyBase} returned error: ${response.status} ${response.statusText}`, 'warning');
-        }
-        continue;
-      }
-      
-      // If response looks good, return it
-      if (response.ok) {
-        if (addLogEntry) {
-          addLogEntry(`Successfully fetched via proxy: ${proxyBase}`, 'success');
-        }
-        return response;
-      }
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      if (addLogEntry) {
-        addLogEntry(`Proxy ${proxyBase} failed: ${errorMsg}`, 'warning');
-      }
-      // Try next proxy
-      continue;
-    }
-  }
-  
-  if (addLogEntry) {
-    addLogEntry('All CORS proxies failed, trying direct fetch as last resort', 'warning');
-  }
-  
-  // If all proxies fail, try direct fetch as last resort
-  return fetch(input, init);
-}
-
-/**
- * Set up custom fetch function for Transformers.js
- */
-function setupCustomFetch(): void {
-  // Use proper type narrowing instead of type assertion
-  if (typeof env === 'object' && env !== null) {
-    const envRecord: Record<string, unknown> = env;
-    envRecord.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
-      return customFetch(input, init);
-    };
-  }
-}
 
 // Lazy WASM import - only load when init() is called
 let wasmModuleExports: {
@@ -189,7 +90,7 @@ const getInitWasm = async (): Promise<unknown> => {
 };
 
 let wasmModule: WasmModuleFractalChat | null = null;
-let textGenerationPipeline: TextGenerationPipeline | null = null;
+let chatWorker: Worker | null = null;
 let chatContainerEl: HTMLElement | null = null;
 
 // Logging function - accessible to all functions
@@ -413,134 +314,85 @@ function generateFractalImage(fractalType: FractalType): ImageData {
   return imageDataObj;
 }
 
-/**
- * Extract assistant response from generated text, removing prompt and formatting
- */
-function extractAssistantResponse(generatedText: string, formattedPrompt: string): string {
-  let response = generatedText;
-  
-  // Try to remove the formatted prompt
-  if (response.includes(formattedPrompt)) {
-    response = response.replace(formattedPrompt, '');
-  }
-  
-  // Remove Qwen-specific tokens
-  response = response.replace(/<\|im_start\|>assistant\s*/g, '');
-  response = response.replace(/<\|im_end\|>/g, '');
-  response = response.replace(/<\|im_start\|>/g, '');
-  
-  // Remove common patterns like "user" or "assistant" labels at the start
-  response = response.replace(/^\s*(user|assistant)[:\s]+/i, '');
-  
-  // Try to find text after the last occurrence of common separators
-  const lastAssistantIndex = response.lastIndexOf('assistant');
-  if (lastAssistantIndex !== -1) {
-    const afterAssistant = response.substring(lastAssistantIndex + 'assistant'.length);
-    // If there's meaningful content after "assistant", use it
-    if (afterAssistant.trim().length > 0) {
-      response = afterAssistant;
-    }
-  }
-  
-  // Remove any remaining "user" mentions at the start
-  response = response.replace(/^\s*user[:\s]+/i, '');
-  
-  // Clean up whitespace
-  response = response.trim();
-  
-  return response;
-}
+// Worker message types using discriminated unions
+type LoadMessage = {
+  id: string;
+  type: 'load';
+};
+
+type GenerateMessage = {
+  id: string;
+  type: 'generate';
+  message: string;
+  options: {
+    max_new_tokens: number;
+    temperature: number;
+    do_sample: boolean;
+  };
+};
+
+// Worker response types using discriminated unions
+type LoadedResponse = {
+  id: string;
+  type: 'loaded';
+};
+
+type ResultResponse = {
+  id: string;
+  type: 'result';
+  response: string;
+};
+
+type ErrorResponse = {
+  id: string;
+  type: 'error';
+  error: string;
+};
+
+type WorkerResponse = LoadedResponse | ResultResponse | ErrorResponse;
 
 /**
- * Generate chat response using Transformers.js with Qwen chat template
+ * Generate chat response using Web Worker
  */
 async function generateChatResponse(message: string): Promise<string> {
-  if (!textGenerationPipeline) {
-    throw new Error('Chat model not loaded');
+  if (!chatWorker) {
+    throw new Error('Chat worker not initialized');
   }
   
-  // Qwen uses chat template format with messages array
-  // Check if tokenizer has apply_chat_template method
-  const tokenizer = textGenerationPipeline.tokenizer;
-  if (tokenizer && typeof tokenizer.apply_chat_template === 'function') {
-    const messages = [
-      { role: 'user', content: message }
-    ];
-    
-    const formattedPrompt = tokenizer.apply_chat_template(messages, {
-      tokenize: false,
-      add_generation_prompt: true,
-    });
-    
-    if (typeof formattedPrompt !== 'string') {
-      throw new Error('Chat template did not return a string');
-    }
-    
-    const result = await textGenerationPipeline(formattedPrompt, {
-      max_new_tokens: 100,
-      temperature: 0.7,
-      do_sample: true,
-    });
-    
-    if (Array.isArray(result) && result.length > 0) {
-      const firstItem = result[0];
-      if (typeof firstItem === 'object' && firstItem !== null && 'generated_text' in firstItem) {
-        const generatedText = firstItem.generated_text;
-        if (typeof generatedText === 'string') {
-          // Extract only the assistant's response
-          const response = extractAssistantResponse(generatedText, formattedPrompt);
-          return response || 'I understand.';
-        }
-      }
-    } else if (typeof result === 'object' && result !== null && 'generated_text' in result) {
-      const generatedText = result.generated_text;
-      if (typeof generatedText === 'string') {
-        const response = extractAssistantResponse(generatedText, formattedPrompt);
-        return response || 'I understand.';
-      }
-    }
-  } else {
-    // Fallback to simple prompt format if chat template not available
-    const prompt = `User: ${message}\nAssistant:`;
-    const result = await textGenerationPipeline(prompt, {
-      max_new_tokens: 100,
-      temperature: 0.7,
-      do_sample: true,
-    });
-    
-    if (Array.isArray(result) && result.length > 0) {
-      const firstItem = result[0];
-      if (typeof firstItem === 'object' && firstItem !== null && 'generated_text' in firstItem) {
-        const generatedText = firstItem.generated_text;
-        if (typeof generatedText === 'string') {
-          const assistantMatch = generatedText.match(/Assistant:\s*(.+)/s);
-          if (assistantMatch && assistantMatch[1]) {
-            return assistantMatch[1].trim();
-          }
-          const promptIndex = generatedText.indexOf('Assistant:');
-          if (promptIndex !== -1) {
-            return generatedText.substring(promptIndex + 'Assistant:'.length).trim();
-          }
-          return generatedText.substring(prompt.length).trim();
-        }
-      }
-    } else if (typeof result === 'object' && result !== null && 'generated_text' in result) {
-      const generatedText = result.generated_text;
-      if (typeof generatedText === 'string') {
-        const assistantMatch = generatedText.match(/Assistant:\s*(.+)/s);
-        if (assistantMatch && assistantMatch[1]) {
-          return assistantMatch[1].trim();
-        }
-        const promptIndex = generatedText.indexOf('Assistant:');
-        if (promptIndex !== -1) {
-          return generatedText.substring(promptIndex + 'Assistant:'.length).trim();
-        }
-        return generatedText.substring(prompt.length).trim();
-      }
-    }
-  }
+  const worker = chatWorker; // Capture for use in closure
   
-  return 'I understand.';
+  return new Promise((resolve, reject) => {
+    const id = crypto.randomUUID();
+    
+    const handler = (event: MessageEvent<WorkerResponse>): void => {
+      if (event.data.id !== id) {
+        return;
+      }
+      
+      worker.removeEventListener('message', handler);
+      
+      if (event.data.type === 'result') {
+        resolve(event.data.response);
+      } else if (event.data.type === 'error') {
+        reject(new Error(event.data.error));
+      }
+    };
+    
+    worker.addEventListener('message', handler);
+    
+    const generateMessage: GenerateMessage = {
+      id,
+      type: 'generate',
+      message,
+      options: {
+        max_new_tokens: 100,
+        temperature: 0.7,
+        do_sample: true,
+      },
+    };
+    
+    worker.postMessage(generateMessage);
+  });
 }
 
 /**
@@ -626,23 +478,51 @@ function hideThinkingAnimation(): void {
 }
 
 /**
- * Load chat model
+ * Load chat model in Web Worker
  */
 async function loadChatModel(): Promise<void> {
-  if (textGenerationPipeline) {
-    return;
+  if (chatWorker) {
+    return; // Already loaded
   }
   
   if (addLogEntry) {
-    addLogEntry('Loading chat model...', 'info');
+    addLogEntry('Loading chat model in worker...', 'info');
   }
   
-  env.allowLocalModels = false;
+  chatWorker = new Worker(
+    new URL('./fractal-chat.worker.ts', import.meta.url),
+    { type: 'module' }
+  );
   
-  // Set up custom fetch with CORS proxy support before loading model
-  setupCustomFetch();
-  
-  textGenerationPipeline = await pipeline('text-generation', MODEL_ID);
+  // Wait for worker to load model
+  await new Promise<void>((resolve, reject) => {
+    if (!chatWorker) {
+      reject(new Error('Failed to create worker'));
+      return;
+    }
+    
+    const worker = chatWorker; // Capture for use in closure
+    const id = crypto.randomUUID();
+    
+    const handler = (event: MessageEvent<WorkerResponse>): void => {
+      if (event.data.id !== id) {
+        return;
+      }
+      
+      worker.removeEventListener('message', handler);
+      
+      if (event.data.type === 'loaded') {
+        resolve();
+      } else if (event.data.type === 'error') {
+        reject(new Error(event.data.error));
+      }
+    };
+    
+    worker.addEventListener('message', handler);
+    
+    const loadMessage: LoadMessage = { id, type: 'load' };
+    worker.postMessage(loadMessage);
+  });
   
   if (addLogEntry) {
     addLogEntry('Chat model loaded successfully', 'success');
@@ -786,6 +666,13 @@ export async function init(): Promise<void> {
             addLogEntry(`Error: ${errorMessage}`, 'error');
           }
         });
+      }
+    });
+
+    // Cleanup worker on page unload
+    window.addEventListener('beforeunload', () => {
+      if (chatWorker) {
+        chatWorker.terminate();
       }
     });
 

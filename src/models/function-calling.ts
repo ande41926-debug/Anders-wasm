@@ -1,103 +1,44 @@
-import { pipeline, type TextGenerationPipeline, env } from '@xenova/transformers';
-
-// Model configuration
-// Using a small text generation model for function calling
-// DistilGPT-2 is a good choice for <1GB memory and proven compatibility with Transformers.js
-const MODEL_ID = 'Xenova/distilgpt2';
-
-// CORS proxy services for Hugging Face model loading
-const CORS_PROXY_SERVICES = [
-  'https://api.allorigins.win/raw?url=',
-  'https://corsproxy.io/?',
-  'https://api.codetabs.com/v1/proxy?quest=',
-] as const;
-
-/**
- * Check if a URL needs CORS proxying
- */
-function needsProxy(url: string): boolean {
-  return (
-    url.includes('huggingface.co') &&
-    !url.includes('cdn.jsdelivr.net') &&
-    !url.includes('api.allorigins.win') &&
-    !url.includes('corsproxy.io') &&
-    !url.includes('api.codetabs.com')
-  );
-}
-
-/**
- * Custom fetch function with CORS proxy support
- */
-async function customFetch(input: RequestInfo | URL, init?: RequestInit, onLog?: LogCallback): Promise<Response> {
-  const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-  
-  // If URL doesn't need proxying, use normal fetch
-  if (!needsProxy(url)) {
-    return fetch(input, init);
-  }
-  
-  if (onLog) {
-    onLog(`Custom fetch: Attempting to fetch via CORS proxy: ${url}`, 'info');
-  }
-  
-  // Try each CORS proxy in order
-  for (const proxyBase of CORS_PROXY_SERVICES) {
-    try {
-      const proxyUrl = proxyBase + encodeURIComponent(url);
-      if (onLog) {
-        onLog(`Trying proxy: ${proxyBase}`, 'info');
-      }
-      
-      const response = await fetch(proxyUrl, {
-        ...init,
-        redirect: 'follow',
-      });
-      
-      // Skip proxies that return error status codes
-      if (response.status >= 400 && response.status < 600) {
-        if (onLog) {
-          onLog(`Proxy ${proxyBase} returned error: ${response.status} ${response.statusText}`, 'warning');
-        }
-        continue;
-      }
-      
-      // If response looks good, return it
-      if (response.ok) {
-        if (onLog) {
-          onLog(`Successfully fetched via proxy: ${proxyBase}`, 'success');
-        }
-        return response;
-      }
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      if (onLog) {
-        onLog(`Proxy ${proxyBase} failed: ${errorMsg}`, 'warning');
-      }
-      // Try next proxy
-      continue;
-    }
-  }
-  
-  if (onLog) {
-    onLog('All CORS proxies failed, trying direct fetch as last resort', 'warning');
-  }
-  
-  // If all proxies fail, try direct fetch as last resort
-  return fetch(input, init);
-}
-
-// Override the fetch function to use CORS proxies
-const setupCustomFetch = (onLog?: LogCallback): void => {
-  if (typeof env === 'object' && env !== null) {
-    const envRecord: Record<string, unknown> = env;
-    envRecord.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
-      return customFetch(input, init, onLog);
-    };
-  }
+// Worker message types using discriminated unions
+type LoadMessage = {
+  id: string;
+  type: 'load';
 };
 
-// Pipeline instance
-let textGenerationPipeline: TextGenerationPipeline | null = null;
+type GenerateMessage = {
+  id: string;
+  type: 'generate';
+  prompt: string;
+  options: {
+    max_new_tokens: number;
+    temperature: number;
+    do_sample: boolean;
+    top_p?: number;
+    repetition_penalty?: number;
+  };
+};
+
+// Worker response types using discriminated unions
+type LoadedResponse = {
+  id: string;
+  type: 'loaded';
+};
+
+type ResultResponse = {
+  id: string;
+  type: 'result';
+  generatedText: string;
+};
+
+type ErrorResponse = {
+  id: string;
+  type: 'error';
+  error: string;
+};
+
+type WorkerResponse = LoadedResponse | ResultResponse | ErrorResponse;
+
+// Worker instance
+let functionCallingWorker: Worker | null = null;
 
 // Loading state
 let isLoading = false;
@@ -128,35 +69,13 @@ export interface AgentStep {
 }
 
 /**
- * Factory helper to create a TextGenerationPipeline
- * Encapsulates the type assertion at the boundary
- */
-async function createTextGenerationPipeline(
-  modelId: string,
-  onProgress?: ProgressCallback
-): Promise<TextGenerationPipeline> {
-  const pipelineResult = await pipeline('text-generation', modelId, {
-    progress_callback: (progress: { loaded: number; total: number }) => {
-      if (onProgress && progress.total > 0) {
-        const progressPercent = (progress.loaded / progress.total) * 0.9 + 0.1;
-        onProgress(progressPercent);
-      }
-    },
-  });
-  
-  // Narrow to TextGenerationPipeline type once at the boundary
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-unnecessary-type-assertion
-  return pipelineResult as TextGenerationPipeline;
-}
-
-/**
- * Load the DistilGPT-2 text generation model
+ * Load the DistilGPT-2 text generation model in Web Worker
  */
 export async function loadAgentModel(
   onProgress?: ProgressCallback,
   onLog?: LogCallback
 ): Promise<void> {
-  if (isLoaded && textGenerationPipeline) {
+  if (isLoaded && functionCallingWorker) {
     if (onLog) {
       onLog('Agent model already loaded', 'info');
     }
@@ -173,17 +92,48 @@ export async function loadAgentModel(
   isLoading = true;
 
   try {
-    setupCustomFetch(onLog);
-    
     if (onLog) {
-      onLog(`Loading agent model: ${MODEL_ID}...`, 'info');
+      onLog('Loading agent model in worker...', 'info');
     }
 
     if (onProgress) {
       onProgress(0.1);
     }
 
-    textGenerationPipeline = await createTextGenerationPipeline(MODEL_ID, onProgress);
+    functionCallingWorker = new Worker(
+      new URL('./function-calling.worker.ts', import.meta.url),
+      { type: 'module' }
+    );
+
+    // Wait for worker to load model
+    await new Promise<void>((resolve, reject) => {
+      if (!functionCallingWorker) {
+        reject(new Error('Failed to create worker'));
+        return;
+      }
+
+      const worker = functionCallingWorker;
+      const id = crypto.randomUUID();
+
+      const handler = (event: MessageEvent<WorkerResponse>): void => {
+        if (event.data.id !== id) {
+          return;
+        }
+
+        worker.removeEventListener('message', handler);
+
+        if (event.data.type === 'loaded') {
+          resolve();
+        } else if (event.data.type === 'error') {
+          reject(new Error(event.data.error));
+        }
+      };
+
+      worker.addEventListener('message', handler);
+
+      const loadMessage: LoadMessage = { id, type: 'load' };
+      worker.postMessage(loadMessage);
+    });
 
     if (onProgress) {
       onProgress(1.0);
@@ -307,7 +257,7 @@ export async function runAgent(
   maxIterations = 5,
   onClarify?: ClarificationCallback
 ): Promise<AgentStep[]> {
-  if (!textGenerationPipeline) {
+  if (!functionCallingWorker) {
     throw new Error('Agent model not loaded');
   }
 
@@ -463,12 +413,11 @@ export async function runAgent(
       continue;
     }
 
-    // Generate response from LLM
-    if (!textGenerationPipeline) {
-      throw new Error('Pipeline not initialized');
+    // Generate response from LLM using worker
+    if (!functionCallingWorker) {
+      throw new Error('Worker not initialized');
     }
     
-    // Use the typed pipeline directly - no assertions needed
     // Truncate history if needed to avoid tokenizer "offset out of bounds" errors
     const truncatedHistory = conversationHistory.length > maxHistoryLength
       ? conversationHistory.slice(-maxHistoryLength)
@@ -479,14 +428,47 @@ export async function runAgent(
     }
     
     // Wrap in try-catch to handle tokenizer errors gracefully
-    let output;
+    let llmOutput: string;
     try {
-      output = await textGenerationPipeline(truncatedHistory, {
-        max_new_tokens: 30,
-        temperature: 0.2,
-        do_sample: true,
-        top_p: 0.4,
-        repetition_penalty: 1.5,
+      llmOutput = await new Promise<string>((resolve, reject) => {
+        if (!functionCallingWorker) {
+          reject(new Error('Worker not initialized'));
+          return;
+        }
+
+        const worker = functionCallingWorker;
+        const id = crypto.randomUUID();
+
+        const handler = (event: MessageEvent<WorkerResponse>): void => {
+          if (event.data.id !== id) {
+            return;
+          }
+
+          worker.removeEventListener('message', handler);
+
+          if (event.data.type === 'result') {
+            resolve(event.data.generatedText);
+          } else if (event.data.type === 'error') {
+            reject(new Error(event.data.error));
+          }
+        };
+
+        worker.addEventListener('message', handler);
+
+        const generateMessage: GenerateMessage = {
+          id,
+          type: 'generate',
+          prompt: truncatedHistory,
+          options: {
+            max_new_tokens: 30,
+            temperature: 0.2,
+            do_sample: true,
+            top_p: 0.4,
+            repetition_penalty: 1.5,
+          },
+        };
+
+        worker.postMessage(generateMessage);
       });
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
@@ -500,12 +482,45 @@ export async function runAgent(
           onLog(`Retrying with shorter history: ${shorterHistory.length} chars`, 'warning');
         }
         try {
-          output = await textGenerationPipeline(shorterHistory, {
-            max_new_tokens: 100,
-            temperature: 0.7,
-            do_sample: true,
-            top_p: 0.9,
-            repetition_penalty: 1.1,
+          llmOutput = await new Promise<string>((resolve, reject) => {
+            if (!functionCallingWorker) {
+              reject(new Error('Worker not initialized'));
+              return;
+            }
+
+            const worker = functionCallingWorker;
+            const id = crypto.randomUUID();
+
+            const handler = (event: MessageEvent<WorkerResponse>): void => {
+              if (event.data.id !== id) {
+                return;
+              }
+
+              worker.removeEventListener('message', handler);
+
+              if (event.data.type === 'result') {
+                resolve(event.data.generatedText);
+              } else if (event.data.type === 'error') {
+                reject(new Error(event.data.error));
+              }
+            };
+
+            worker.addEventListener('message', handler);
+
+            const generateMessage: GenerateMessage = {
+              id,
+              type: 'generate',
+              prompt: shorterHistory,
+              options: {
+                max_new_tokens: 100,
+                temperature: 0.7,
+                do_sample: true,
+                top_p: 0.9,
+                repetition_penalty: 1.1,
+              },
+            };
+
+            worker.postMessage(generateMessage);
           });
         } catch (retryError) {
           const retryErrorMsg = retryError instanceof Error ? retryError.message : 'Unknown error';
@@ -513,24 +528,6 @@ export async function runAgent(
         }
       } else {
         throw error;
-      }
-    }
-
-    // Extract text from output
-    // TextGenerationPipeline returns array of objects with generated_text property
-    let llmOutput = '';
-    if (Array.isArray(output) && output.length > 0) {
-      const firstItem = output[0];
-      if (typeof firstItem === 'object' && firstItem !== null && 'generated_text' in firstItem) {
-        const generatedText = firstItem.generated_text;
-        if (typeof generatedText === 'string') {
-          llmOutput = generatedText;
-        }
-      }
-    } else if (typeof output === 'object' && output !== null && 'generated_text' in output) {
-      const generatedText = output.generated_text;
-      if (typeof generatedText === 'string') {
-        llmOutput = generatedText;
       }
     }
 
@@ -807,13 +804,13 @@ export async function runAgent(
  * Check if agent model is loaded
  */
 export function isAgentModelLoaded(): boolean {
-  return isLoaded && textGenerationPipeline !== null;
+  return isLoaded && functionCallingWorker !== null;
 }
 
 /**
  * Get the model ID
  */
 export function getModelId(): string {
-  return MODEL_ID;
+  return 'Xenova/distilgpt2';
 }
 

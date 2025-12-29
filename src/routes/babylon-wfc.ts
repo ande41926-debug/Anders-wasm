@@ -18,7 +18,57 @@ import { loadWasmModule, validateWasmModule } from '../wasm/loader';
 import { WasmLoadError, WasmInitError } from '../wasm/types';
 import { Engine, Scene, ArcRotateCamera, HemisphericLight, DirectionalLight, Vector3, Mesh, StandardMaterial, Color3, InstancedMesh, MeshBuilder } from '@babylonjs/core';
 import { AdvancedDynamicTexture, Button } from '@babylonjs/gui';
-import { pipeline, type TextGenerationPipeline, type FeatureExtractionPipeline, env } from '@xenova/transformers';
+// Worker message and response types using discriminated unions
+type LoadEmbeddingMessage = {
+  id: string;
+  type: 'load-embedding';
+};
+
+type LoadTextGenMessage = {
+  id: string;
+  type: 'load-textgen';
+};
+
+type GenerateEmbeddingMessage = {
+  id: string;
+  type: 'generate-embedding';
+  text: string;
+};
+
+type GenerateLayoutMessage = {
+  id: string;
+  type: 'generate-layout';
+  prompt: string;
+};
+
+type LoadedResponse = {
+  id: string;
+  type: 'loaded';
+};
+
+type EmbeddingResultResponse = {
+  id: string;
+  type: 'embedding-result';
+  embedding: number[];
+};
+
+type LayoutResultResponse = {
+  id: string;
+  type: 'layout-result';
+  response: string;
+};
+
+type ErrorResponse = {
+  id: string;
+  type: 'error';
+  error: string;
+};
+
+type WorkerResponse = LoadedResponse | EmbeddingResultResponse | LayoutResultResponse | ErrorResponse;
+
+// Worker instance
+let babylonWfcWorker: Worker | null = null;
+
 import { PARAMETER_SET_PATTERNS, type ParameterSetPattern } from '../parameter-set-embedding-prompts';
 
 /**
@@ -354,90 +404,11 @@ function validateBabylonWfcModule(exports: unknown): WasmModuleBabylonWfc | null
   };
 }
 
-// Qwen model configuration
-const MODEL_ID = 'Xenova/qwen1.5-0.5b-chat';
-
-// CORS proxy services for Hugging Face model loading
-const CORS_PROXY_SERVICES = [
-  'https://api.allorigins.win/raw?url=',
-  'https://corsproxy.io/?',
-  'https://api.codetabs.com/v1/proxy?quest=',
-] as const;
-
-/**
- * Check if a URL needs CORS proxying
- */
-function needsProxy(url: string): boolean {
-  return (
-    url.includes('huggingface.co') &&
-    !url.includes('cdn.jsdelivr.net') &&
-    !url.includes('api.allorigins.win') &&
-    !url.includes('corsproxy.io') &&
-    !url.includes('api.codetabs.com')
-  );
-}
-
-/**
- * Custom fetch function with CORS proxy support
- */
-async function customFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-  
-  // If URL doesn't need proxying, use normal fetch
-  if (!needsProxy(url)) {
-    return fetch(input, init);
-  }
-  
-  // Try each CORS proxy in order
-  for (const proxyBase of CORS_PROXY_SERVICES) {
-    try {
-      const proxyUrl = proxyBase + encodeURIComponent(url);
-      
-      const response = await fetch(proxyUrl, {
-        ...init,
-        redirect: 'follow',
-      });
-      
-      // Skip proxies that return error status codes
-      if (response.status >= 400 && response.status < 600) {
-        continue;
-      }
-      
-      // If response looks good, return it
-      if (response.ok) {
-        return response;
-      }
-    } catch {
-      // Try next proxy
-      continue;
-    }
-  }
-  
-  // If all proxies fail, try direct fetch as last resort
-  return fetch(input, init);
-}
-
-/**
- * Set up custom fetch function for Transformers.js
- */
-function setupCustomFetch(): void {
-  // Use proper type narrowing instead of type assertion
-  if (typeof env === 'object' && env !== null) {
-    const envRecord: Record<string, unknown> = env;
-    envRecord.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
-      return customFetch(input, init);
-    };
-  }
-}
-
 // Qwen model state
-let textGenerationPipeline: TextGenerationPipeline | null = null;
 let isModelLoading = false;
 let isModelLoaded = false;
 
 // Embedding model state
-const EMBEDDING_MODEL_ID = 'Xenova/all-MiniLM-L6-v2';
-let embeddingPipeline: FeatureExtractionPipeline | null = null;
 let isEmbeddingModelLoading = false;
 let isEmbeddingModelLoaded = false;
 
@@ -460,10 +431,10 @@ const PATTERN_CACHE_STORE_NAME = 'patterns';
 const PATTERN_CACHE_VERSION = 1;
 
 /**
- * Load embedding model for semantic pattern matching
+ * Load embedding model for semantic pattern matching in Web Worker
  */
 async function loadEmbeddingModel(): Promise<void> {
-  if (isEmbeddingModelLoaded && embeddingPipeline) {
+  if (isEmbeddingModelLoaded && babylonWfcWorker) {
     return;
   }
 
@@ -475,25 +446,48 @@ async function loadEmbeddingModel(): Promise<void> {
 
   try {
     if (addLogEntry !== null) {
-      addLogEntry('Loading embedding model for pattern matching...', 'info');
+      addLogEntry('Loading embedding model for pattern matching in worker...', 'info');
     }
 
-    setupCustomFetch();
+    // Create worker if it doesn't exist
+    if (!babylonWfcWorker) {
+      babylonWfcWorker = new Worker(
+        new URL('./babylon-wfc.worker.ts', import.meta.url),
+        { type: 'module' }
+      );
+    }
 
-    const pipelineResult = await pipeline('feature-extraction', EMBEDDING_MODEL_ID);
+    const worker = babylonWfcWorker;
 
-    // Pipeline can return a function or an object - both are valid
-    if (pipelineResult !== null && pipelineResult !== undefined) {
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-unnecessary-type-assertion
-      embeddingPipeline = pipelineResult as FeatureExtractionPipeline;
-      isEmbeddingModelLoaded = true;
-      isEmbeddingModelLoading = false;
+    // Wait for worker to load embedding model
+    await new Promise<void>((resolve, reject) => {
+      const id = crypto.randomUUID();
 
-      if (addLogEntry !== null) {
-        addLogEntry('Embedding model loaded successfully', 'success');
-      }
-    } else {
-      throw new Error('Embedding pipeline result is null or undefined');
+      const handler = (event: MessageEvent<WorkerResponse>): void => {
+        if (event.data.id !== id) {
+          return;
+        }
+
+        worker.removeEventListener('message', handler);
+
+        if (event.data.type === 'loaded') {
+          resolve();
+        } else if (event.data.type === 'error') {
+          reject(new Error(event.data.error));
+        }
+      };
+
+      worker.addEventListener('message', handler);
+
+      const loadMessage: LoadEmbeddingMessage = { id, type: 'load-embedding' };
+      worker.postMessage(loadMessage);
+    });
+
+    isEmbeddingModelLoaded = true;
+    isEmbeddingModelLoading = false;
+
+    if (addLogEntry !== null) {
+      addLogEntry('Embedding model loaded successfully', 'success');
     }
   } catch (error) {
     isEmbeddingModelLoading = false;
@@ -703,12 +697,12 @@ function cosineSimilarity(a: Float32Array, b: Float32Array): number {
 }
 
 /**
- * Generate embedding for text using the embedding model
+ * Generate embedding for text using the embedding model in Web Worker
  */
 async function generateEmbedding(text: string): Promise<Float32Array | null> {
-  if (!embeddingPipeline) {
+  if (!babylonWfcWorker) {
     await loadEmbeddingModel();
-    if (!embeddingPipeline) {
+    if (!babylonWfcWorker) {
       return null;
     }
   }
@@ -717,20 +711,40 @@ async function generateEmbedding(text: string): Promise<Float32Array | null> {
     if (addLogEntry !== null) {
       addLogEntry(`Generating embedding for: "${text}"`, 'info');
     }
-    
-    const result = await embeddingPipeline(text, { pooling: 'mean', normalize: true });
 
-    if (result && typeof result === 'object' && 'data' in result) {
-      const data = result.data;
-      if (data instanceof Float32Array) {
-        return data;
-      }
-      if (Array.isArray(data)) {
-        return new Float32Array(data);
-      }
-    }
+    const worker = babylonWfcWorker;
 
-    return null;
+    return new Promise<Float32Array | null>((resolve) => {
+      const id = crypto.randomUUID();
+
+      const handler = (event: MessageEvent<WorkerResponse>): void => {
+        if (event.data.id !== id) {
+          return;
+        }
+
+        worker.removeEventListener('message', handler);
+
+        if (event.data.type === 'embedding-result') {
+          // Convert array back to Float32Array
+          resolve(new Float32Array(event.data.embedding));
+        } else if (event.data.type === 'error') {
+          if (addLogEntry !== null) {
+            addLogEntry(`Failed to generate embedding: ${event.data.error}`, 'warning');
+          }
+          resolve(null);
+        }
+      };
+
+      worker.addEventListener('message', handler);
+
+      const generateMessage: GenerateEmbeddingMessage = {
+        id,
+        type: 'generate-embedding',
+        text,
+      };
+
+      worker.postMessage(generateMessage);
+    });
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
     if (addLogEntry !== null) {
@@ -833,7 +847,7 @@ async function initializeCommonPatterns(): Promise<void> {
     }
     await loadEmbeddingModel();
     
-    if (!embeddingPipeline) {
+    if (!babylonWfcWorker) {
       if (addLogEntry !== null) {
         addLogEntry('✗ Embedding model failed to load - cannot generate embeddings', 'error');
       }
@@ -921,10 +935,10 @@ async function initializeCommonPatterns(): Promise<void> {
 }
 
 /**
- * Load Qwen model for text-to-layout generation
+ * Load Qwen model for text-to-layout generation in Web Worker
  */
 async function loadQwenModel(onProgress?: (progress: number) => void): Promise<void> {
-  if (isModelLoaded && textGenerationPipeline) {
+  if (isModelLoaded && babylonWfcWorker) {
     return;
   }
 
@@ -939,20 +953,39 @@ async function loadQwenModel(onProgress?: (progress: number) => void): Promise<v
       onProgress(0.1);
     }
 
-    // Set up custom fetch with CORS proxy support before loading model
-    setupCustomFetch();
+    // Create worker if it doesn't exist
+    if (!babylonWfcWorker) {
+      babylonWfcWorker = new Worker(
+        new URL('./babylon-wfc.worker.ts', import.meta.url),
+        { type: 'module' }
+      );
+    }
 
-    const pipelineResult = await pipeline('text-generation', MODEL_ID, {
-      progress_callback: (progress: { loaded: number; total: number }) => {
-        if (onProgress && progress.total > 0) {
-          const progressPercent = (progress.loaded / progress.total) * 0.9 + 0.1;
-          onProgress(progressPercent);
+    const worker = babylonWfcWorker;
+
+    // Wait for worker to load text generation model
+    await new Promise<void>((resolve, reject) => {
+      const id = crypto.randomUUID();
+
+      const handler = (event: MessageEvent<WorkerResponse>): void => {
+        if (event.data.id !== id) {
+          return;
         }
-      },
-    });
 
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-unnecessary-type-assertion
-    textGenerationPipeline = pipelineResult as TextGenerationPipeline;
+        worker.removeEventListener('message', handler);
+
+        if (event.data.type === 'loaded') {
+          resolve();
+        } else if (event.data.type === 'error') {
+          reject(new Error(event.data.error));
+        }
+      };
+
+      worker.addEventListener('message', handler);
+
+      const loadMessage: LoadTextGenMessage = { id, type: 'load-textgen' };
+      worker.postMessage(loadMessage);
+    });
 
     if (onProgress) {
       onProgress(1.0);
@@ -967,34 +1000,6 @@ async function loadQwenModel(onProgress?: (progress: number) => void): Promise<v
   }
 }
 
-/**
- * Extract assistant response from generated text
- */
-function extractAssistantResponse(generatedText: string, formattedPrompt: string): string {
-  let response = generatedText;
-
-  if (response.includes(formattedPrompt)) {
-    response = response.replace(formattedPrompt, '');
-  }
-
-  response = response.replace(/<\|im_start\|>assistant\s*/g, '');
-  response = response.replace(/<\|im_end\|>/g, '');
-  response = response.replace(/<\|im_start\|>/g, '');
-  response = response.replace(/^\s*(user|assistant)[:\s]+/i, '');
-
-  const lastAssistantIndex = response.lastIndexOf('assistant');
-  if (lastAssistantIndex !== -1) {
-    const afterAssistant = response.substring(lastAssistantIndex + 'assistant'.length);
-    if (afterAssistant.trim().length > 0) {
-      response = afterAssistant;
-    }
-  }
-
-  response = response.replace(/^\s*user[:\s]+/i, '');
-  response = response.trim();
-
-  return response;
-}
 
 /**
  * Get default layout constraints for initial render
@@ -1009,80 +1014,43 @@ function getDefaultConstraints(): LayoutConstraints {
 }
 
 /**
- * Generate layout description from text prompt using Qwen
+ * Generate layout description from text prompt using Qwen in Web Worker
  * Supports both JSON output and function calling
  */
 async function generateLayoutDescription(prompt: string): Promise<string> {
-  if (!textGenerationPipeline) {
+  if (!babylonWfcWorker) {
     throw new Error('Qwen model not loaded');
   }
 
-  const tokenizer = textGenerationPipeline.tokenizer;
-  if (tokenizer && typeof tokenizer.apply_chat_template === 'function') {
-    const messages = [
-      {
-        role: 'user',
-        content: `Generate a layout description for a hexagonal grid based on this request: "${prompt}"
+  const worker = babylonWfcWorker;
 
-You can respond in two ways:
+  return new Promise((resolve, reject) => {
+    const id = crypto.randomUUID();
 
-1. JSON format with these fields:
-   - buildingDensity: "sparse" | "medium" | "dense"
-   - clustering: "clustered" | "distributed" | "random"
-   - grassRatio: number between 0.0 and 1.0
-   - buildingSizeHint: "small" | "medium" | "large"
-   - voronoiSeeds: {"forest": number, "water": number, "grass": number} (optional)
-   - roadDensity: number between 0.0 and 1.0 (optional, default 0.1)
-   - maxLayer: number between 1 and 50 (optional, default 30)
-   - buildingRules: {"minAdjacentRoads": number, "sizeConstraints": {"min": number, "max": number}} (optional)
-
-2. Function call format: [FUNCTION: function_name(param1=value1, param2=value2)]
-   Available functions:
-   - set_voronoi_seeds(forest=number, water=number, grass=number)
-   - set_road_density(density=number) (0.0 to 1.0)
-   - set_grid_size(maxLayer=number) (1 to 50)
-   - set_building_rules(minAdjacentRoads=number, minSize=number, maxSize=number)
-
-You can use function calls for fine-grained control, or JSON for simpler requests.
-Respond with only the JSON object or function calls, no additional text.`,
-      },
-    ];
-
-    const formattedPrompt = tokenizer.apply_chat_template(messages, {
-      tokenize: false,
-      add_generation_prompt: true,
-    });
-
-    if (typeof formattedPrompt !== 'string') {
-      throw new Error('Chat template did not return a string');
-    }
-
-    const result = await textGenerationPipeline(formattedPrompt, {
-      max_new_tokens: 150,
-      temperature: 0.7,
-      do_sample: true,
-    });
-
-    let generatedText = '';
-    if (Array.isArray(result) && result.length > 0) {
-      const firstItem = result[0];
-      if (typeof firstItem === 'object' && firstItem !== null && 'generated_text' in firstItem) {
-        const generated = firstItem.generated_text;
-        if (typeof generated === 'string') {
-          generatedText = generated;
-        }
+    const handler = (event: MessageEvent<WorkerResponse>): void => {
+      if (event.data.id !== id) {
+        return;
       }
-    } else if (typeof result === 'object' && result !== null && 'generated_text' in result) {
-      const generated = result.generated_text;
-      if (typeof generated === 'string') {
-        generatedText = generated;
+
+      worker.removeEventListener('message', handler);
+
+      if (event.data.type === 'layout-result') {
+        resolve(event.data.response);
+      } else if (event.data.type === 'error') {
+        reject(new Error(event.data.error));
       }
-    }
+    };
 
-    return extractAssistantResponse(generatedText, formattedPrompt);
-  }
+    worker.addEventListener('message', handler);
 
-  throw new Error('Chat template not available');
+    const generateMessage: GenerateLayoutMessage = {
+      id,
+      type: 'generate-layout',
+      prompt,
+    };
+
+    worker.postMessage(generateMessage);
+  });
 }
 
 
@@ -2849,7 +2817,7 @@ async function generateLayoutFromText(
     }
 
     if (modelStatusEl) {
-      modelStatusEl.textContent = 'Generating layout description...';
+      modelStatusEl.textContent = 'Generating 3D grid layout...';
     }
 
     if (addLogEntry !== null) {
