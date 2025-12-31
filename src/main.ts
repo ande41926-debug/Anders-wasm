@@ -7,6 +7,7 @@ import { init as initFunctionCalling } from './routes/function-calling';
 import { init as initFractalChat } from './routes/fractal-chat';
 import { init as initHelloWasm } from './routes/hello-wasm';
 import { init as initBabylonWfc } from './routes/babylon-wfc';
+import { init as initMultilingualChat } from './routes/multilingual-chat';
 import { registerServiceWorker, setupOfflineHandling } from './pwa/sw-register';
 
 type RouteHandler = () => Promise<void>;
@@ -22,6 +23,7 @@ routes.set('/function-calling', initFunctionCalling);
 routes.set('/fractal-chat', initFractalChat);
 routes.set('/hello-wasm', initHelloWasm);
 routes.set('/babylon-wfc', initBabylonWfc);
+routes.set('/multilingual-chat', initMultilingualChat);
 
 async function route(): Promise<void> {
   const path = window.location.pathname;
@@ -62,6 +64,8 @@ async function route(): Promise<void> {
       handler = routes.get('/hello-wasm');
     } else if (path.includes('babylon-wfc')) {
       handler = routes.get('/babylon-wfc');
+    } else if (path.includes('multilingual-chat')) {
+      handler = routes.get('/multilingual-chat');
     }
   }
   

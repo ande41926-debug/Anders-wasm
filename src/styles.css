@@ -94,6 +94,20 @@ h1 {
 
 .preprocess-section h2 {
   margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.preprocess-section p {
+  margin: 1rem 0;
+  line-height: 1.6;
+}
+
+.preprocess-section p:first-of-type {
+  margin-top: 0;
+}
+
+.preprocess-section p:last-of-type {
+  margin-bottom: 0;
 }
 
 .preprocess-section input[type="file"],
@@ -660,6 +674,7 @@ h1 {
   outline: none;
   border-color: #42b6ff;
 }
+
 
 .chat-send-btn {
   padding: 0.75rem 1.5rem;

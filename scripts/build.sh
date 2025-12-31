@@ -38,13 +38,16 @@ echo "Building wasm-hello..."
 echo "Building wasm-babylon-wfc..."
 ./scripts/build-wasm.sh wasm-babylon-wfc pkg/wasm_babylon_wfc
 
+echo "Building wasm-multilingual-chat..."
+./scripts/build-wasm.sh wasm-multilingual-chat pkg/wasm_multilingual_chat
+
 echo "==========================================================="
 echo "VERIFYING ALL WASM MODULES"
 echo "==========================================================="
 
 # Verify all modules were built successfully
 # **Learning Point**: Add new modules to this list when creating new WASM crates
-MODULES=("wasm_astar" "wasm_preprocess" "wasm_preprocess_256m" "wasm_preprocess_image_captioning" "wasm_agent_tools" "wasm_fractal_chat" "wasm_hello" "wasm_babylon_wfc")
+MODULES=("wasm_astar" "wasm_preprocess" "wasm_preprocess_256m" "wasm_preprocess_image_captioning" "wasm_agent_tools" "wasm_fractal_chat" "wasm_hello" "wasm_babylon_wfc" "wasm_multilingual_chat")
 FAILED_MODULES=()
 
 for module in "${MODULES[@]}"; do

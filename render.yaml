@@ -30,6 +30,7 @@ services:
         - wasm-fractal-chat/**
         - wasm-hello/**
         - wasm-babylon-wfc/**
+        - wasm-multilingual-chat/**
         - Cargo.toml
         - package.json
         - vite.config.ts

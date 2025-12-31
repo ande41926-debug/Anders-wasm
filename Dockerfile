@@ -40,6 +40,7 @@ COPY wasm-agent-tools/Cargo.toml ./wasm-agent-tools/
 COPY wasm-fractal-chat/Cargo.toml ./wasm-fractal-chat/
 COPY wasm-hello/Cargo.toml ./wasm-hello/
 COPY wasm-babylon-wfc/Cargo.toml ./wasm-babylon-wfc/
+COPY wasm-multilingual-chat/Cargo.toml ./wasm-multilingual-chat/
 
 # Add wasm32 target (must be done before building for wasm32-unknown-unknown)
 RUN rustup target add wasm32-unknown-unknown
@@ -48,7 +49,7 @@ RUN rustup target add wasm32-unknown-unknown
 # **Learning Point**: These dummy files allow Docker to cache compiled dependencies
 # separately from source code. When you change source, only source needs rebuilding.
 # Add new crates here when creating new WASM modules.
-RUN mkdir -p wasm-astar/src wasm-preprocess/src wasm-preprocess-256m/src wasm-preprocess-image-captioning/src wasm-agent-tools/src wasm-fractal-chat/src wasm-hello/src wasm-babylon-wfc/src && \
+RUN mkdir -p wasm-astar/src wasm-preprocess/src wasm-preprocess-256m/src wasm-preprocess-image-captioning/src wasm-agent-tools/src wasm-fractal-chat/src wasm-hello/src wasm-babylon-wfc/src wasm-multilingual-chat/src && \
     echo "fn main() {}" > wasm-astar/src/lib.rs || true && \
     echo "fn main() {}" > wasm-preprocess/src/lib.rs || true && \
     echo "fn main() {}" > wasm-preprocess-256m/src/lib.rs || true && \
@@ -56,7 +57,8 @@ RUN mkdir -p wasm-astar/src wasm-preprocess/src wasm-preprocess-256m/src wasm-pr
     echo "fn main() {}" > wasm-agent-tools/src/lib.rs || true && \
     echo "fn main() {}" > wasm-fractal-chat/src/lib.rs || true && \
     echo "fn main() {}" > wasm-hello/src/lib.rs || true && \
-    echo "fn main() {}" > wasm-babylon-wfc/src/lib.rs || true
+    echo "fn main() {}" > wasm-babylon-wfc/src/lib.rs || true && \
+    echo "fn main() {}" > wasm-multilingual-chat/src/lib.rs || true
 
 # Build dependencies only (for caching)
 RUN cargo build --target wasm32-unknown-unknown --release --workspace || true
@@ -72,6 +74,7 @@ COPY wasm-agent-tools ./wasm-agent-tools
 COPY wasm-fractal-chat ./wasm-fractal-chat
 COPY wasm-hello ./wasm-hello
 COPY wasm-babylon-wfc ./wasm-babylon-wfc
+COPY wasm-multilingual-chat ./wasm-multilingual-chat
 COPY scripts ./scripts
 
 # Make build scripts executable

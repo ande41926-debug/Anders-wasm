@@ -318,3 +318,19 @@ export interface WasmBabylonWfc {
   wasmModulePath: string;
 }
 
+// Multilingual chat module types
+export interface WasmModuleMultilingualChat {
+  memory: WebAssembly.Memory;
+  detect_language(text: string): string;
+  get_text_stats(text: string): string;
+  normalize_text(text: string, language: string): string;
+}
+
+export interface TextStats {
+  wordCount: number;
+  characterCount: number;
+  characterCountNoSpaces: number;
+  sentenceCount: number;
+  averageWordLength: number;
+}
+

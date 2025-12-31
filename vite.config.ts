@@ -16,7 +16,9 @@ function devServerRouting(): Plugin {
         }
 
         // Only handle HTML requests (not assets)
-        if (url.endsWith('.html') || (!url.includes('.') && !url.startsWith('/@'))) {
+        // Check if URL is a file extension (ends with common asset extensions)
+        const isAssetFile = /\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|wasm|json|webp|mjs)$/i.test(url);
+        if (url.endsWith('.html') || (!isAssetFile && !url.startsWith('/@'))) {
           // Rewrite /astar to /pages/astar.html
           if (url === '/astar' || url.startsWith('/astar?')) {
             req.url = '/pages/astar.html' + (url.includes('?') ? url.substring(url.indexOf('?')) : '');
@@ -50,6 +52,10 @@ function devServerRouting(): Plugin {
           // Rewrite /babylon-wfc to /pages/babylon-wfc.html
           else if (url === '/babylon-wfc' || url.startsWith('/babylon-wfc?')) {
             req.url = '/pages/babylon-wfc.html' + (url.includes('?') ? url.substring(url.indexOf('?')) : '');
+          }
+          // Rewrite /multilingual-chat to /pages/multilingual-chat.html
+          else if (url === '/multilingual-chat' || url.startsWith('/multilingual-chat?')) {
+            req.url = '/pages/multilingual-chat.html' + (url.includes('?') ? url.substring(url.indexOf('?')) : '');
           }
         }
         next();
@@ -691,6 +697,7 @@ export default defineConfig({
         // **Learning Point**: Add new HTML pages here for build system to include them
         'hello-wasm': resolve(__dirname, 'pages/hello-wasm.html'),
         'babylon-wfc': resolve(__dirname, 'pages/babylon-wfc.html'),
+        'multilingual-chat': resolve(__dirname, 'pages/multilingual-chat.html'),
       },
       output: {
         format: 'es',

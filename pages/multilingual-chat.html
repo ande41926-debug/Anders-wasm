@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#000000">
+    <title>Multilingual Chat - Sigma WASM</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/webp" href="/rustacean.webp">
+    <link rel="apple-touch-icon" href="/rustacean.webp">
+    <link rel="stylesheet" href="/src/styles.css">
+</head>
+<body>
+    <div id="fullscreen">
+        <div class="preprocess-container">
+            <a href="/" class="home-link" title="Home">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+            </a>
+            <h1>Multilingual Chat</h1>
+            <div id="error" class="error-message"></div>
+            <div id="loadingIndicator" class="loading-indicator"></div>
+            <div id="downloadCheckmarks" class="download-checkmarks-container">
+                <div id="checkmark-wasm" class="download-checkmark">
+                    <span class="checkmark-icon">✓</span>
+                    <span>WASM Module</span>
+                </div>
+                <div id="checkmark-model" class="download-checkmark">
+                    <span class="checkmark-icon">✓</span>
+                    <span>Chat Model</span>
+                </div>
+            </div>
+            <div id="systemLogs" class="system-logs-container">
+                <h3>System Logs</h3>
+                <div id="systemLogsContent" class="system-logs-content"></div>
+            </div>
+            
+            <div class="preprocess-section">
+                <h2>About Multilingual Chat</h2>
+                <p>
+                    This demo showcases multilingual chat capabilities in 8 languages: English, German, French, Italian, Portuguese, Hindi, Spanish, and Thai, powered by Qwen1.5-0.5b-chat.
+                </p>
+                <p>
+                    <strong>How it works:</strong> Type a message in any language, and the system will automatically detect the input language and respond in the same language.
+                </p>
+                <p>
+                    <strong>WASM Module:</strong> A Rust WebAssembly module provides high-performance language detection and text analysis. It uses heuristics (common words, character sets, and diacritics) to detect the input language and calculates text statistics (word count, character count, sentence count) in real-time.
+                </p>
+                <p>
+                    <strong>Features:</strong>
+                </p>
+                <ul>
+                    <li>Automatic language detection for input messages (WASM-powered)</li>
+                    <li>Text statistics (word count, character count, etc.) calculated via WASM</li>
+                    <li>Multilingual responses in 8 supported languages</li>
+                    <li>Real-time processing with near-native performance</li>
+                </ul>
+            </div>
+            
+            <div class="preprocess-section">
+                <h2>Chat</h2>
+                <div id="chatContainer" class="chat-container">
+                    <div id="chatMessages" class="chat-messages"></div>
+                    <div class="chat-input-container">
+                        <input type="text" id="chatInput" class="chat-input" placeholder="Type a message in any language..." />
+                        <button id="sendBtn" class="chat-send-btn">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
+
