@@ -395,8 +395,6 @@ function validateBabylonChunksModule(exports: unknown): WasmModuleBabylonChunks 
     ): string => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
       const result = generateVoronoiRegionsFunc(max_layer, center_q, center_r, forest_seeds, water_seeds, grass_seeds);
-      // DEBUG: Log raw result from WASM function
-      console.log('[DEBUG] generateVoronoiRegionsFunc raw result:', result, 'type:', typeof result);
       return typeof result === 'string' ? result : '[]';
     },
     validate_road_connectivity: (roads_json: string): boolean => {

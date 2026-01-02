@@ -779,10 +779,6 @@ pub fn generate_voronoi_regions(
     water_seeds: i32,
     grass_seeds: i32,
 ) -> String {
-    // TEMPORARY: Return test value to verify WASM is being reloaded
-    // If you still see [], the browser is using a cached WASM file
-    return r#"[{"q":999,"r":999,"tileType":0}]"#.to_string();
-    
     // Generate hex grid
     let hex_grid = generate_hex_grid(max_layer, center_q, center_r);
     
