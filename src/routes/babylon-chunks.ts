@@ -445,12 +445,35 @@ function validateBabylonChunksModule(exports: unknown): WasmModuleBabylonChunks 
         return 'unknown (function not found)';
       }
       try {
+        // Call the wasm-bindgen generated function which should return a string
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
         const result = getWasmVersionFunc();
-        if (typeof result === 'string' && result.length > 0) {
+        // wasm-bindgen automatically converts String returns to JavaScript strings
+        // If we get a string, return it directly
+        if (typeof result === 'string') {
           return result;
         }
-        return `unknown (got: ${String(result)})`;
+        // Check if it's an array (tuple) and convert manually if needed
+        if (Array.isArray(result) && result.length === 2 && typeof result[0] === 'number' && typeof result[1] === 'number') {
+          // This is the raw tuple [ptr, len] - we need to access the WASM memory
+          // But we shouldn't need to do this if the wrapper is working correctly
+          return 'unknown (got tuple - wrapper issue)';
+        }
+        // Check if it's an object with string properties
+        if (typeof result === 'object' && result !== null) {
+          // Try to extract string value from object
+          if ('value' in result && typeof result.value === 'string') {
+            return result.value;
+          }
+          if ('toString' in result && typeof result.toString === 'function') {
+            const str = result.toString();
+            if (typeof str === 'string') {
+              return str;
+            }
+          }
+          return `unknown (object: ${JSON.stringify(result).substring(0, 100)})`;
+        }
+        return `unknown (unexpected type: ${typeof result})`;
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Unknown error';
         return `unknown (error: ${errorMsg})`;
