@@ -29,7 +29,7 @@ let wasmModuleExports: {
   increment_counter: () => void;
   get_message: () => string;
   set_message: (message: string) => void;
-  get_fave_gum: () => void;
+  get_fave_gum: () => string;
   set_fave_gum: (gum: string) => void;
 } | null = null;
 
@@ -273,8 +273,8 @@ function validateHelloModule(exports: unknown): WasmModuleHello | null {
     increment_counter: wasmModuleExports.increment_counter,
     get_message: wasmModuleExports.get_message,
     set_message: wasmModuleExports.set_message,
-    get_fave_gum: wasmModuleExports.get_message,
-    set_fave_gum: wasmModuleExports.set_message,
+    get_fave_gum: wasmModuleExports.get_fave_gum,
+    set_fave_gum: wasmModuleExports.set_fave_gum,
   };
 }
 
