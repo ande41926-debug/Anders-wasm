@@ -269,17 +269,17 @@ function validateHelloModule(exports: unknown): WasmModuleHello | null {
     if (typeof wasmModuleExports.set_message !== 'function') {
       missingExports.push('set_message (function)');
     }
-    if (typeof wasmModuleExports.get_fave_gum !== 'function') {
-      missingExports.push('get_fave_gum (function)');
+    if (typeof wasmModuleExports.get_fave_food !== 'function') {
+      missingExports.push('get_fave_food (function)');
     }
-    if (typeof wasmModuleExports.set_fave_gum !== 'function') {
-      missingExports.push('set_fave_gum (function)');
+    if (typeof wasmModuleExports.set_fave_food !== 'function') {
+      missingExports.push('set_fave_food (function)');
     }
-    if (typeof wasmModuleExports.get_fave_squishy !== 'function') {
-      missingExports.push('get_fave_squishy (function)');
+    if (typeof wasmModuleExports.get_fave_sport !== 'function') {
+      missingExports.push('get_fave_sport (function)');
     }
-    if (typeof wasmModuleExports.set_fave_squishy !== 'function') {
-      missingExports.push('set_fave_squishy (function)');
+    if (typeof wasmModuleExports.set_fave_sport !== 'function') {
+      missingExports.push('set_fave_sport (function)');
     }
   }
   
@@ -305,10 +305,10 @@ function validateHelloModule(exports: unknown): WasmModuleHello | null {
     increment_counter: wasmModuleExports.increment_counter,
     get_message: wasmModuleExports.get_message,
     set_message: wasmModuleExports.set_message,
-    get_fave_gum: wasmModuleExports.get_fave_gum,
-    set_fave_gum: wasmModuleExports.set_fave_gum,
-    get_fave_squishy: wasmModuleExports.get_fave_squishy,
-    set_fave_squishy: wasmModuleExports.set_fave_squishy,
+    get_fave_food: wasmModuleExports.get_fave_food,
+    set_fave_food: wasmModuleExports.set_fave_food,
+    get_fave_sport: wasmModuleExports.get_fave_sport,
+    set_fave_sport: wasmModuleExports.set_fave_sport,
   };
 }
 
@@ -376,19 +376,19 @@ export const init = async (): Promise<void> => {
   // Get UI elements
   const counterDisplay = document.getElementById('counter-display');
   const messageDisplay = document.getElementById('message-display');
-  const faveGumDisplay = document.getElementById('fave-gum-display');
-  const faveSquishyDisplay = document.getElementById('fave-squishy-display');
+  const faveFoodDisplay = document.getElementById('fave-food-display');
+  const faveSportDisplay = document.getElementById('fave-sport-display');
   const incrementBtn = document.getElementById('increment-btn');
   const messageInputEl = document.getElementById('message-input');
   const setMessageBtn = document.getElementById('set-message-btn');
-  const faveGumInputEl = document.getElementById('fave-gum-input');
-  const setFaveGumBtn = document.getElementById('set-fave-gum-btn');
-  const faveSquishyInputEl = document.getElementById('fave-squishy-input');
-  const setFaveSquishyBtn = document.getElementById('set-fave-squishy-btn');
+  const faveFoodInputEl = document.getElementById('fave-food-input');
+  const setFaveFoodBtn = document.getElementById('set-fave-food-btn');
+  const faveSportInputEl = document.getElementById('fave-sport-input');
+  const setFaveSportBtn = document.getElementById('set-fave-sport-btn');
   
   if (!counterDisplay || !messageDisplay || 
     !incrementBtn || !messageInputEl || !setMessageBtn ||
-    !faveGumDisplay || !faveGumInputEl || !setFaveGumBtn ||
+    !faveFoodDisplay || !faveFoodInputEl || !setFaveFoodFBtn ||
     !faveSquishyDisplay || !faveSquishyInputEl || !setFaveSquishyBtn
   ) {
     throw new Error('Required UI elements not found');
@@ -406,14 +406,14 @@ export const init = async (): Promise<void> => {
     throw new Error('fave-gum-input element is not an HTMLInputElement');
   }
   
-  const faveGumInput = faveGumInputEl;
+  const faveFoodInput = faveFoodInputEl;
 
   // Type narrowing for input element
   if (!(faveSquishyInputEl instanceof HTMLInputElement)) {
     throw new Error('fave-squishy-input element is not an HTMLInputElement');
   }
   
-  const faveSquishyInput = faveSquishyInputEl;
+  const faveSportInput = faveSportInputEl;
   
   // Update display with initial values
   // **Learning Point**: We call WASM functions directly from TypeScript.
@@ -421,8 +421,8 @@ export const init = async (): Promise<void> => {
   if (WASM_HELLO.wasmModule) {
     counterDisplay.textContent = WASM_HELLO.wasmModule.get_counter().toString();
     messageDisplay.textContent = WASM_HELLO.wasmModule.get_message();
-    faveGumDisplay.textContent = WASM_HELLO.wasmModule.get_fave_gum();
-    faveSquishyDisplay.textContent = WASM_HELLO.wasmModule.get_fave_squishy();
+    faveFoodDisplay.textContent = WASM_HELLO.wasmModule.get_fave_food();
+    faveSportDisplay.textContent = WASM_HELLO.wasmModule.get_fave_sport();
   }
   
   // Set up event handlers
