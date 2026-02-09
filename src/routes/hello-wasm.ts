@@ -29,10 +29,10 @@ let wasmModuleExports: {
   increment_counter: () => void;
   get_message: () => string;
   set_message: (message: string) => void;
-  get_fave_gum: () => string;
-  set_fave_gum: (gum: string) => void;
-  get_fave_squishy: () => string;
-  set_fave_squishy: (squishy: string) => void;
+  get_fave_food: () => string;
+  set_fave_food: (food: string) => void;
+  get_fave_sport: () => string;
+  set_fave_sport: (sport: string) => void;
 } | null = null;
 
 /**
@@ -75,17 +75,17 @@ const getInitWasm = async (): Promise<unknown> => {
     if ('set_message' in moduleUnknown) {
       moduleKeys.push('set_message');
     }
-    if ('get_fave_gum' in moduleUnknown) {
-      moduleKeys.push('get_fave_gum');
+    if ('get_fave_food' in moduleUnknown) {
+      moduleKeys.push('get_fave_food');
     }
-    if ('set_fave_gum' in moduleUnknown) {
-      moduleKeys.push('set_fave_gum');
+    if ('set_fave_food' in moduleUnknown) {
+      moduleKeys.push('set_fave_food');
     }
-    if ('get_fave_squishy' in moduleUnknown) {
-      moduleKeys.push('get_fave_squishy');
+    if ('get_fave_sport' in moduleUnknown) {
+      moduleKeys.push('get_fave_sport');
     }
-    if ('set_fave_squishy' in moduleUnknown) {
-      moduleKeys.push('set_fave_squishy');
+    if ('set_fave_sport' in moduleUnknown) {
+      moduleKeys.push('set_fave_sport');
     }
     
     // Get all keys for error messages
@@ -111,17 +111,17 @@ const getInitWasm = async (): Promise<unknown> => {
     if (!('set_message' in moduleUnknown) || typeof moduleUnknown.set_message !== 'function') {
       throw new Error(`Module missing 'set_message' export. Available: ${allKeys.join(', ')}`);
     }
-    if (!('get_fave_gum' in moduleUnknown) || typeof moduleUnknown.get_fave_gum !== 'function') {
-      throw new Error(`Module missing 'get_fave_gum' export. Available: ${allKeys.join(', ')}`);
+    if (!('get_fave_food' in moduleUnknown) || typeof moduleUnknown.get_fave_food !== 'function') {
+      throw new Error(`Module missing 'get_fave_food' export. Available: ${allKeys.join(', ')}`);
     }
-    if (!('set_fave_gum' in moduleUnknown) || typeof moduleUnknown.set_fave_gum !== 'function') {
-      throw new Error(`Module missing 'set_fave_gum' export. Available: ${allKeys.join(', ')}`);
+    if (!('set_fave_food' in moduleUnknown) || typeof moduleUnknown.set_fave_food !== 'function') {
+      throw new Error(`Module missing 'set_fave_food' export. Available: ${allKeys.join(', ')}`);
     }
-    if (!('get_fave_squishy' in moduleUnknown) || typeof moduleUnknown.get_fave_squishy !== 'function') {
-      throw new Error(`Module missing 'get_fave_squishy' export. Available: ${allKeys.join(', ')}`);
+    if (!('get_fave_sport' in moduleUnknown) || typeof moduleUnknown.get_fave_sport !== 'function') {
+      throw new Error(`Module missing 'get_fave_sport' export. Available: ${allKeys.join(', ')}`);
     }
-    if (!('set_fave_squishy' in moduleUnknown) || typeof moduleUnknown.set_fave_squishy !== 'function') {
-      throw new Error(`Module missing 'set_fave_squishy' export. Available: ${allKeys.join(', ')}`);
+    if (!('set_fave_sport' in moduleUnknown) || typeof moduleUnknown.set_fave_sport !== 'function') {
+      throw new Error(`Module missing 'set_fave_sport' export. Available: ${allKeys.join(', ')}`);
     }
     
     // Extract and assign functions - we've validated they exist and are functions above
@@ -132,10 +132,10 @@ const getInitWasm = async (): Promise<unknown> => {
     const incrementCounterFunc = moduleUnknown.increment_counter;
     const getMessageFunc = moduleUnknown.get_message;
     const setMessageFunc = moduleUnknown.set_message;
-    const getFaveGumFunc = moduleUnknown.get_fave_gum;
-    const setFaveGumFunc = moduleUnknown.set_fave_gum;
-    const getFaveSquishyFunc = moduleUnknown.get_fave_squishy;
-    const setFaveSquishyFunc = moduleUnknown.set_fave_squishy;
+    const getFaveFoodFunc = moduleUnknown.get_fave_food;
+    const setFaveFoodFunc = moduleUnknown.set_fave_food;
+    const getFaveSportFunc = moduleUnknown.get_fave_sport;
+    const setFaveSportFunc = moduleUnknown.set_fave_sport;
     
     if (typeof defaultFunc !== 'function') {
       throw new Error('default export is not a function');
@@ -155,17 +155,17 @@ const getInitWasm = async (): Promise<unknown> => {
     if (typeof setMessageFunc !== 'function') {
       throw new Error('set_message export is not a function');
     }
-    if (typeof getFaveGumFunc !== 'function') {
-      throw new Error('get_fave_gum export is not a function');
+    if (typeof getFaveFoodFunc !== 'function') {
+      throw new Error('get_fave_food export is not a function');
     }
-    if (typeof setFaveGumFunc !== 'function') {
-      throw new Error('set_fave_gum export is not a function');
+    if (typeof setFaveFoodFunc !== 'function') {
+      throw new Error('set_fave_food export is not a function');
     }
-    if (typeof getFaveSquishyFunc !== 'function') {
-      throw new Error('get_fave_squishy export is not a function');
+    if (typeof getFaveSportFunc !== 'function') {
+      throw new Error('get_fave_sport export is not a function');
     }
-    if (typeof setFaveSquishyFunc !== 'function') {
-      throw new Error('set_fave_squishy export is not a function');
+    if (typeof setFaveSportFunc !== 'function') {
+      throw new Error('set_fave_sport export is not a function');
     }
     
     // TypeScript can't narrow Function to specific signatures after validation
@@ -184,9 +184,9 @@ const getInitWasm = async (): Promise<unknown> => {
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       set_message: setMessageFunc as (message: string) => void,
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      get_fave_gum: getFaveGumFunc as () => string,
+      get_fave_food: getFaveGumFunc as () => string,
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      set_fave_gum: setFaveGumFunc as (gum: string) => void,
+      set_fave_food: setFaveGumFunc as (gum: string) => void,
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       get_fave_squishy: getFaveSquishyFunc as () => string,
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
