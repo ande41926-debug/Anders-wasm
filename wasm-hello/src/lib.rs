@@ -16,10 +16,10 @@ struct HelloState {
     counter: i32,
     /// Message string that can be set and retrieved
     message: String,
-    /// Gum string that can be set and retrieved
-    gum: String,
-    /// Squishy string that can be set and retrieved
-    squishy: String,
+    /// Food string that can be set and retrieved
+    food: String,
+    /// Sport string that can be set and retrieved
+    sport: String,
 }
 
 impl HelloState {
@@ -28,8 +28,8 @@ impl HelloState {
         HelloState {
             counter: 0,
             message: String::from("Rust WASM is so Sigma!"),
-            gum: String::from("Hubba Bubba"),
-            squishy: String::from("Pop It"),
+            food: String::from("pizza"),
+            sports: String::from("Patriots"),
         }
     }
     
@@ -53,24 +53,24 @@ impl HelloState {
         self.message = message;
     }
 
-    /// Get the current gum
-    fn get_fave_gum(&self) -> String {
-        self.gum.clone()
+    /// Get the current food
+    fn get_fave_food(&self) -> String {
+        self.food.clone()
     }
     
-    /// Set a new gum
-    fn set_fave_gum(&mut self, gum: String) {
-        self.gum = gum;
+    /// Set a new food
+    fn set_fave_food(&mut self, food: String) {
+        self.food = food;
     }
 
-    /// Get the current squishy
-    fn get_fave_squishy(&self) -> String {
-        self.squishy.clone()
+    /// Get the current sport
+    fn get_fave_sport(&self) -> String {
+        self.sport.clone()
     }
     
-    /// Set a new squishy
-    fn set_fave_squishy(&mut self, squishy: String) {
-        self.squishy = squishy;
+    /// Set a new sport
+    fn set_fave_sport(&mut self, sport: String) {
+        self.sport = sport;
     }
 }
 
@@ -157,56 +157,56 @@ pub fn set_message(message: String) {
     state.set_message(message);
 }
 
-/// Get the current gum
+/// Get the current food
 /// 
 /// **Learning Point**: Strings in Rust need to be converted to JavaScript strings.
 /// `wasm-bindgen` handles this automatically when you return a `String` from a
 /// `#[wasm_bindgen]` function.
 /// 
-/// @returns The current gum as a JavaScript string
+/// @returns The current food as a JavaScript string
 #[wasm_bindgen]
-pub fn get_fave_gum() -> String {
+pub fn get_fave_food() -> String {
     let state = HELLO_STATE.lock().unwrap();
-    state.get_fave_gum()
+    state.get_fave_food()
 }
 
-/// Set a new gum
+/// Set a new food
 /// 
 /// **Learning Point**: JavaScript strings are automatically converted to Rust `String`
 /// when passed as parameters to `#[wasm_bindgen]` functions.
 /// 
 /// **To extend**: You could add validation, length limits, or formatting here.
 /// 
-/// @param gum - The new gum to set
+/// @param food - The new food to set
 #[wasm_bindgen]
-pub fn set_fave_gum(gum: String) {
+pub fn set_fave_food(food: String) {
     let mut state = HELLO_STATE.lock().unwrap();
-    state.set_fave_gum(gum);
+    state.set_fave_food(food);
 }
 
-/// Get the current squishy
+/// Get the current sport
 /// 
 /// **Learning Point**: Strings in Rust need to be converted to JavaScript strings.
 /// `wasm-bindgen` handles this automatically when you return a `String` from a
 /// `#[wasm_bindgen]` function.
 /// 
-/// @returns The current squishy as a JavaScript string
+/// @returns The current sport as a JavaScript string
 #[wasm_bindgen]
-pub fn get_fave_squishy() -> String {
+pub fn get_fave_sport() -> String {
     let state = HELLO_STATE.lock().unwrap();
-    state.get_fave_squishy()
+    state.get_fave_sport()
 }
 
-/// Set a new squishy
+/// Set a new sport
 /// 
 /// **Learning Point**: JavaScript strings are automatically converted to Rust `String`
 /// when passed as parameters to `#[wasm_bindgen]` functions.
 /// 
 /// **To extend**: You could add validation, length limits, or formatting here.
 /// 
-/// @param squishy - The new squishy to set
+/// @param sport - The new sport to set
 #[wasm_bindgen]
-pub fn set_fave_squishy(squishy: String) {
+pub fn set_fave_sport(sport: String) {
     let mut state = HELLO_STATE.lock().unwrap();
-    state.set_fave_squishy(squishy);
+    state.set_fave_sport(sport);
 }
