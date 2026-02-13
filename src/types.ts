@@ -189,7 +189,6 @@ export interface WasmModuleFractalChat {
 // Hello WASM template module types
 // This is a simplified template for students to learn from
 export interface WasmModuleHello {
-  get_fave_sport(): string | null;
   memory: WebAssembly.Memory;
   wasm_init(initialCounter: number): void;
   get_counter(): number;
@@ -200,6 +199,8 @@ export interface WasmModuleHello {
   set_fave_food(food: string): void;
   get_fave_sport(): string;
   set_fave_sport(sport: string): void;
+  get_decimal_number(): number;
+  set_decimal_number(value: number): void;
 }
 
 export interface WasmHello {

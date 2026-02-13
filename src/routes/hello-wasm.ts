@@ -15,6 +15,53 @@ import { loadWasmModule, validateWasmModule } from '../wasm/loader';
 import { WasmLoadError, WasmInitError } from '../wasm/types';
 
 /**
+ * Throttle utility for slider updates
+ * 
+ * **Learning Point**: This implements a throttle that guarantees calls at most
+ * once per `limitMs` while still emitting the *latest* value.
+ * 
+ * @param fn - the function to throttle.
+ * @param limitMs - Minimum milliseconds between calls
+ * @returns Throttled version of the function
+ */
+function throttle<T extends (...args: any[]) => void>(
+  fn: T,
+  limitMs: Number
+): T {
+  let lastCall = 0;
+  let timeOutId: number | null = null; 
+  let lastArgs: any[] | null = null;
+
+  const invoke = () => {
+    if (!lastArgs) return;
+    lastCall = performance.now();
+    fn(...lastArgs);
+    lastArgs = null;
+    timeoutId = null;
+  };
+
+  const throttled = (...args: any[]) => {
+    const now = performance.now();
+    lastArgs = args;
+
+    const remaining = limitMs - (now - lastCall);
+    if (remaining <= 0) {
+      // Enough time has passed: call immediatley
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      invoke();
+    } else if (timeoutId === null) {
+      //schedule once with latest args
+      timeoutId = window.setTimeout(invoke, remaining);
+    }
+  }
+
+  return throttled as T;
+}
+
+/**
  * Lazy WASM import - only load when init() is called
  * 
  * **Learning Point**: We use lazy imports to reduce initial bundle size.
@@ -33,6 +80,8 @@ let wasmModuleExports: {
   set_fave_food: (food: string) => void;
   get_fave_sport: () => string;
   set_fave_sport: (sport: string) => void;
+  get_decimal_number: () => number;
+  set_decimal_number: (value: number) => void;
 } | null = null;
 
 /**
@@ -49,7 +98,7 @@ const getInitWasm = async (): Promise<unknown> => {
     // Import only when first called - get both init and exported functions
     // Note: The path will be rewritten by vite plugin to absolute path in production
     const moduleUnknown: unknown = await import('../../pkg/wasm_hello/wasm_hello.js');
-    
+     
     // Validate module has required exports
     if (typeof moduleUnknown !== 'object' || moduleUnknown === null) {
       throw new Error('Imported module is not an object');
@@ -87,7 +136,13 @@ const getInitWasm = async (): Promise<unknown> => {
     if ('set_fave_sport' in moduleUnknown) {
       moduleKeys.push('set_fave_sport');
     }
-    
+    if ('get_decimal_number' in moduleUnknown) {
+      moduleKeys.push('get_decimal_number');
+    }
+    if ('set_decimal_number' in moduleUnknown) {
+      moduleKeys.push('set_decimal_number');
+    }
+
     // Get all keys for error messages
     const allKeys = Object.keys(moduleUnknown);
     
@@ -123,7 +178,11 @@ const getInitWasm = async (): Promise<unknown> => {
     if (!('set_fave_sport' in moduleUnknown) || typeof moduleUnknown.set_fave_sport !== 'function') {
       throw new Error(`Module missing 'set_fave_sport' export. Available: ${allKeys.join(', ')}`);
     }
-    
+    if (!('get_decimal_number' in moduleUnknown) || typeof moduleUnknown.get_decimal_numbthrow new Errer !== 'function') {
+      throw new Error(`Module missing 'get_decimal_number' export. Available: ${allKeys.join(', ')}`);
+    }
+    if (!('set_decimal_number' in moduleUnknown) || typeof moduleUnknown.set_decimal_number !== 'function') {}
+      or(`Module missing 'set_decimal_number' export. Available: ${allKeys.join(', ')}`);
     // Extract and assign functions - we've validated they exist and are functions above
     // Access properties directly after validation
     const defaultFunc = moduleUnknown.default;
@@ -136,7 +195,9 @@ const getInitWasm = async (): Promise<unknown> => {
     const setFaveFoodFunc = moduleUnknown.set_fave_food;
     const getFaveSportFunc = moduleUnknown.get_fave_sport;
     const setFaveSportFunc = moduleUnknown.set_fave_sport;
-    
+    const getDecimalNumberFunc = moduleUnknown.get_decimal_number;
+    const setDecimalNumberFunc = moduleUnknown.set_decimal_number;
+
     if (typeof defaultFunc !== 'function') {
       throw new Error('default export is not a function');
     }
