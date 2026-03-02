@@ -29,10 +29,10 @@ let wasmModuleExports: {
   increment_counter: () => void;
   get_message: () => string;
   set_message: (message: string) => void;
-  get_fave_gum: () => string;
-  set_fave_gum: (gum: string) => void;
-  get_fave_squishy: () => string;
-  set_fave_squishy: (squishy: string) => void;
+  get_fave_food: () => string;
+  set_fave_food: (food: string) => void;
+  get_fave_sport: () => string;
+  set_fave_sport: (sport: string) => void;
 } | null = null;
 
 /**
@@ -75,17 +75,17 @@ const getInitWasm = async (): Promise<unknown> => {
     if ('set_message' in moduleUnknown) {
       moduleKeys.push('set_message');
     }
-    if ('get_fave_gum' in moduleUnknown) {
-      moduleKeys.push('get_fave_gum');
+    if ('get_fave_food' in moduleUnknown) {
+      moduleKeys.push('get_fave_food');
     }
-    if ('set_fave_gum' in moduleUnknown) {
-      moduleKeys.push('set_fave_gum');
+    if ('set_fave_food' in moduleUnknown) {
+      moduleKeys.push('set_fave_food');
     }
-    if ('get_fave_squishy' in moduleUnknown) {
-      moduleKeys.push('get_fave_squishy');
+    if ('get_fave_sport' in moduleUnknown) {
+      moduleKeys.push('get_fave_sport');
     }
-    if ('set_fave_squishy' in moduleUnknown) {
-      moduleKeys.push('set_fave_squishy');
+    if ('set_fave_sport' in moduleUnknown) {
+      moduleKeys.push('set_fave_sport');
     }
     
     // Get all keys for error messages
@@ -111,17 +111,17 @@ const getInitWasm = async (): Promise<unknown> => {
     if (!('set_message' in moduleUnknown) || typeof moduleUnknown.set_message !== 'function') {
       throw new Error(`Module missing 'set_message' export. Available: ${allKeys.join(', ')}`);
     }
-    if (!('get_fave_gum' in moduleUnknown) || typeof moduleUnknown.get_fave_gum !== 'function') {
-      throw new Error(`Module missing 'get_fave_gum' export. Available: ${allKeys.join(', ')}`);
+    if (!('get_fave_food' in moduleUnknown) || typeof moduleUnknown.get_fave_food !== 'function') {
+      throw new Error(`Module missing 'get_fave_food' export. Available: ${allKeys.join(', ')}`);
     }
-    if (!('set_fave_gum' in moduleUnknown) || typeof moduleUnknown.set_fave_gum !== 'function') {
-      throw new Error(`Module missing 'set_fave_gum' export. Available: ${allKeys.join(', ')}`);
+    if (!('set_fave_food' in moduleUnknown) || typeof moduleUnknown.set_fave_food !== 'function') {
+      throw new Error(`Module missing 'set_fave_food' export. Available: ${allKeys.join(', ')}`);
     }
-    if (!('get_fave_squishy' in moduleUnknown) || typeof moduleUnknown.get_fave_squishy !== 'function') {
-      throw new Error(`Module missing 'get_fave_squishy' export. Available: ${allKeys.join(', ')}`);
+    if (!('get_fave_sport' in moduleUnknown) || typeof moduleUnknown.get_fave_sport !== 'function') {
+      throw new Error(`Module missing 'get_fave_sport' export. Available: ${allKeys.join(', ')}`);
     }
-    if (!('set_fave_squishy' in moduleUnknown) || typeof moduleUnknown.set_fave_squishy !== 'function') {
-      throw new Error(`Module missing 'set_fave_squishy' export. Available: ${allKeys.join(', ')}`);
+    if (!('set_fave_sport' in moduleUnknown) || typeof moduleUnknown.set_fave_sport !== 'function') {
+      throw new Error(`Module missing 'set_fave_sport' export. Available: ${allKeys.join(', ')}`);
     }
     
     // Extract and assign functions - we've validated they exist and are functions above
@@ -132,10 +132,10 @@ const getInitWasm = async (): Promise<unknown> => {
     const incrementCounterFunc = moduleUnknown.increment_counter;
     const getMessageFunc = moduleUnknown.get_message;
     const setMessageFunc = moduleUnknown.set_message;
-    const getFaveGumFunc = moduleUnknown.get_fave_gum;
-    const setFaveGumFunc = moduleUnknown.set_fave_gum;
-    const getFaveSquishyFunc = moduleUnknown.get_fave_squishy;
-    const setFaveSquishyFunc = moduleUnknown.set_fave_squishy;
+    const getFaveFoodFunc = moduleUnknown.get_fave_food;
+    const setFaveFoodFunc = moduleUnknown.set_fave_food;
+    const getFaveSportFunc = moduleUnknown.get_fave_sport;
+    const setFaveSportFunc = moduleUnknown.set_fave_sport;
     
     if (typeof defaultFunc !== 'function') {
       throw new Error('default export is not a function');
@@ -155,17 +155,17 @@ const getInitWasm = async (): Promise<unknown> => {
     if (typeof setMessageFunc !== 'function') {
       throw new Error('set_message export is not a function');
     }
-    if (typeof getFaveGumFunc !== 'function') {
-      throw new Error('get_fave_gum export is not a function');
+    if (typeof getFaveFoodFunc !== 'function') {
+      throw new Error('get_fave_food export is not a function');
     }
-    if (typeof setFaveGumFunc !== 'function') {
-      throw new Error('set_fave_gum export is not a function');
+    if (typeof setFaveFoodFunc !== 'function') {
+      throw new Error('set_fave_food export is not a function');
     }
-    if (typeof getFaveSquishyFunc !== 'function') {
-      throw new Error('get_fave_squishy export is not a function');
+    if (typeof getFaveSportFunc !== 'function') {
+      throw new Error('get_fave_sport export is not a function');
     }
-    if (typeof setFaveSquishyFunc !== 'function') {
-      throw new Error('set_fave_squishy export is not a function');
+    if (typeof setFaveSportFunc !== 'function') {
+      throw new Error('set_fave_sport export is not a function');
     }
     
     // TypeScript can't narrow Function to specific signatures after validation
@@ -184,13 +184,13 @@ const getInitWasm = async (): Promise<unknown> => {
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       set_message: setMessageFunc as (message: string) => void,
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      get_fave_gum: getFaveGumFunc as () => string,
+      get_fave_food: getFaveFoodFunc as () => string,
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      set_fave_gum: setFaveGumFunc as (gum: string) => void,
+      set_fave_food: setFaveFoodFunc as (food: string) => void,
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      get_fave_squishy: getFaveSquishyFunc as () => string,
+      get_fave_sport: getFaveSportFunc as () => string,
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      set_fave_squishy: setFaveSquishyFunc as (squishy: string) => void,
+      set_fave_sport: setFaveSportFunc as (sport: string) => void,
     };
   }
   if (!wasmModuleExports) {
@@ -269,17 +269,17 @@ function validateHelloModule(exports: unknown): WasmModuleHello | null {
     if (typeof wasmModuleExports.set_message !== 'function') {
       missingExports.push('set_message (function)');
     }
-    if (typeof wasmModuleExports.get_fave_gum !== 'function') {
-      missingExports.push('get_fave_gum (function)');
+    if (typeof wasmModuleExports.get_fave_food !== 'function') {
+      missingExports.push('get_fave_food (function)');
     }
-    if (typeof wasmModuleExports.set_fave_gum !== 'function') {
-      missingExports.push('set_fave_gum (function)');
+    if (typeof wasmModuleExports.set_fave_food !== 'function') {
+      missingExports.push('set_fave_food (function)');
     }
-    if (typeof wasmModuleExports.get_fave_squishy !== 'function') {
-      missingExports.push('get_fave_squishy (function)');
+    if (typeof wasmModuleExports.get_fave_sport !== 'function') {
+      missingExports.push('get_fave_sport (function)');
     }
-    if (typeof wasmModuleExports.set_fave_squishy !== 'function') {
-      missingExports.push('set_fave_squishy (function)');
+    if (typeof wasmModuleExports.set_fave_sport !== 'function') {
+      missingExports.push('set_fave_sport (function)');
     }
   }
   
@@ -305,10 +305,10 @@ function validateHelloModule(exports: unknown): WasmModuleHello | null {
     increment_counter: wasmModuleExports.increment_counter,
     get_message: wasmModuleExports.get_message,
     set_message: wasmModuleExports.set_message,
-    get_fave_gum: wasmModuleExports.get_fave_gum,
-    set_fave_gum: wasmModuleExports.set_fave_gum,
-    get_fave_squishy: wasmModuleExports.get_fave_squishy,
-    set_fave_squishy: wasmModuleExports.set_fave_squishy,
+    get_fave_food: wasmModuleExports.get_fave_food,
+    set_fave_food: wasmModuleExports.set_fave_food,
+    get_fave_sport: wasmModuleExports.get_fave_sport,
+    set_fave_sport: wasmModuleExports.set_fave_sport,
   };
 }
 
@@ -376,20 +376,20 @@ export const init = async (): Promise<void> => {
   // Get UI elements
   const counterDisplay = document.getElementById('counter-display');
   const messageDisplay = document.getElementById('message-display');
-  const faveGumDisplay = document.getElementById('fave-gum-display');
-  const faveSquishyDisplay = document.getElementById('fave-squishy-display');
+  const faveFoodDisplay = document.getElementById('fave-food-display');
+  const faveSportDisplay = document.getElementById('fave-sport-display');
   const incrementBtn = document.getElementById('increment-btn');
   const messageInputEl = document.getElementById('message-input');
   const setMessageBtn = document.getElementById('set-message-btn');
-  const faveGumInputEl = document.getElementById('fave-gum-input');
-  const setFaveGumBtn = document.getElementById('set-fave-gum-btn');
-  const faveSquishyInputEl = document.getElementById('fave-squishy-input');
-  const setFaveSquishyBtn = document.getElementById('set-fave-squishy-btn');
+  const faveFoodInputEl = document.getElementById('fave-food-input');
+  const setFaveFoodBtn = document.getElementById('set-fave-food-btn');
+  const faveSportInputEl = document.getElementById('fave-sport-input');
+  const setFaveSportBtn = document.getElementById('set-fave-sport-btn');
   
   if (!counterDisplay || !messageDisplay || 
     !incrementBtn || !messageInputEl || !setMessageBtn ||
-    !faveGumDisplay || !faveGumInputEl || !setFaveGumBtn ||
-    !faveSquishyDisplay || !faveSquishyInputEl || !setFaveSquishyBtn
+    !faveFoodDisplay || !faveFoodInputEl || !setFaveFoodBtn ||
+    !faveSportDisplay || !faveSportInputEl || !setFaveSportBtn
   ) {
     throw new Error('Required UI elements not found');
   }
@@ -402,18 +402,18 @@ export const init = async (): Promise<void> => {
   const messageInput = messageInputEl;
 
   // Type narrowing for input element
-  if (!(faveGumInputEl instanceof HTMLInputElement)) {
-    throw new Error('fave-gum-input element is not an HTMLInputElement');
+  if (!(faveFoodInputEl instanceof HTMLInputElement)) {
+    throw new Error('fave-food-input element is not an HTMLInputElement');
   }
   
-  const faveGumInput = faveGumInputEl;
+  const faveFoodInput = faveFoodInputEl;
 
   // Type narrowing for input element
-  if (!(faveSquishyInputEl instanceof HTMLInputElement)) {
-    throw new Error('fave-squishy-input element is not an HTMLInputElement');
+  if (!(faveSportInputEl instanceof HTMLInputElement)) {
+    throw new Error('fave-sport-input element is not an HTMLInputElement');
   }
   
-  const faveSquishyInput = faveSquishyInputEl;
+  const faveSportInput = faveSportInputEl;
   
   // Update display with initial values
   // **Learning Point**: We call WASM functions directly from TypeScript.
@@ -421,8 +421,8 @@ export const init = async (): Promise<void> => {
   if (WASM_HELLO.wasmModule) {
     counterDisplay.textContent = WASM_HELLO.wasmModule.get_counter().toString();
     messageDisplay.textContent = WASM_HELLO.wasmModule.get_message();
-    faveGumDisplay.textContent = WASM_HELLO.wasmModule.get_fave_gum();
-    faveSquishyDisplay.textContent = WASM_HELLO.wasmModule.get_fave_squishy();
+    faveFoodDisplay.textContent = WASM_HELLO.wasmModule.get_fave_food();
+    faveSportDisplay.textContent = WASM_HELLO.wasmModule.get_fave_sport();
   }
   
   // Set up event handlers
@@ -458,48 +458,48 @@ export const init = async (): Promise<void> => {
     }
   });
 
-  setFaveGumBtn.addEventListener('click', () => {
-    if (WASM_HELLO.wasmModule && faveGumInput) {
-      const newGum = faveGumInput.value.trim();
-      if (newGum) {
-        WASM_HELLO.wasmModule.set_fave_gum(newGum);
-        faveGumDisplay.textContent = WASM_HELLO.wasmModule.get_fave_gum();
-        faveGumInput.value = '';
+  setFaveFoodBtn.addEventListener('click', () => {
+    if (WASM_HELLO.wasmModule && faveFoodInput) {
+      const newFood = faveFoodInput.value.trim();
+      if (newFood) {
+        WASM_HELLO.wasmModule.set_fave_food(newFood);
+        faveFoodDisplay.textContent = WASM_HELLO.wasmModule.get_fave_food();
+        faveFoodInput.value = '';
       }
     }
   });
 
   // Allow Enter key to set message
-  faveGumInput.addEventListener('keydown', (e: KeyboardEvent) => {
+  faveFoodInput.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.key === 'Enter' && WASM_HELLO.wasmModule) {
-      const newGum = faveGumInput.value.trim();
-      if (newGum) {
-        WASM_HELLO.wasmModule.set_fave_gum(newGum);
-        faveGumDisplay.textContent = WASM_HELLO.wasmModule.get_fave_gum();
-        faveGumInput.value = '';
+      const newFood = faveFoodInput.value.trim();
+      if (newFood) {
+        WASM_HELLO.wasmModule.set_fave_food(newFood);
+        faveFoodDisplay.textContent = WASM_HELLO.wasmModule.get_fave_food();
+        faveFoodInput.value = '';
       }
     }
   });
 
-  setFaveSquishyBtn.addEventListener('click', () => {
-    if (WASM_HELLO.wasmModule && faveSquishyInput) {
-      const newSquishy = faveSquishyInput.value.trim();
-      if (newSquishy) {
-        WASM_HELLO.wasmModule.set_fave_squishy(newSquishy);
-        faveSquishyDisplay.textContent = WASM_HELLO.wasmModule.get_fave_squishy();
-        faveSquishyInput.value = '';
+  setFaveSportBtn.addEventListener('click', () => {
+    if (WASM_HELLO.wasmModule && faveSportInput) {
+      const newSport = faveSportInput.value.trim();
+      if (newSport) {
+        WASM_HELLO.wasmModule.set_fave_sport(newSport);
+        faveSportDisplay.textContent = WASM_HELLO.wasmModule.get_fave_sport();
+        faveSportInput.value = '';
       }
     }
   });
 
-  // Allow Enter key to set favorite squishy
-  faveSquishyInput.addEventListener('keydown', (e: KeyboardEvent) => {
+  // Allow Enter key to set favorite sport
+  faveSportInput.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.key === 'Enter' && WASM_HELLO.wasmModule) {
-      const newSquishy = faveSquishyInput.value.trim();
-      if (newSquishy) {
-        WASM_HELLO.wasmModule.set_fave_squishy(newSquishy);
-        faveSquishyDisplay.textContent = WASM_HELLO.wasmModule.get_fave_squishy();
-        faveSquishyInput.value = '';
+      const newSport = faveSportInput.value.trim();
+      if (newSport) {
+        WASM_HELLO.wasmModule.set_fave_sport(newSport);
+        faveSportDisplay.textContent = WASM_HELLO.wasmModule.get_fave_sport();
+        faveSportInput.value = '';
       }
     }
   });
