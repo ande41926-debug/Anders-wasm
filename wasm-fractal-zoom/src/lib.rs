@@ -28,12 +28,25 @@ const PALETTE1: [Color; 5] = [
     Color { r: 255, g: 128, b: 0 },  // Neon Orange
 ];
 
+const PALETTE2: [Color; 4] = [
+    Color { r: 200, g: 115, b: 29 },  // Hot Pink
+    Color { r: 200, g: 165, b: 29 },  // Electric Green
+    Color { r: 51, g: 35, b: 139 },  // Deep Purple
+    Color { r: 22, g: 102, b: 124 },  // Tech Blue
+];
+
 pub fn get_color(iterations: f64, max_iterations: f64, palette_id: u32) -> (u8, u8, u8) {
     if iterations >= max_iterations {
-        return (0, 0, 0);
+        return (0,0,0);
     }
 
-    let palette = if palette_id == 0 { &PALETTE0 } else { &PALETTE1 };
+    let palette = match palatte_id {
+        0 => &PALATTE0,
+        1 => &PALATTE1,
+        2 => &PALATTE2,
+        _ => &PALATTE0,
+    };
+
     let n = palette.len() as f64;
     let normalized = iterations / max_iterations;
     let scaled = normalized * (n - 1.0);
