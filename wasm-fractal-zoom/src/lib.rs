@@ -41,10 +41,10 @@ pub fn get_color(iterations: f64, max_iterations: f64, palette_id: u32) -> (u8, 
     }
 
     let palette = match palatte_id {
-        0 = &PALETTE0.as_slice(),
-        1 = &PALETTE1.as_slice(),
-        2 = &PALETTE2.as_slice(),
-        _ = &PALETTE0.as_slice(),
+        0 => &PALETTE0.as_slice(),
+        1 => &PALETTE1.as_slice(),
+        2 => &PALETTE2.as_slice(),
+        _ => &PALETTE0.as_slice(),
     };
 
     let n = palette.len() as f64;
